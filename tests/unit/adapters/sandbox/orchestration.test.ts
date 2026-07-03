@@ -90,7 +90,12 @@ function fakeRuntime(options: FakeRuntimeOptions = {}): {
 }
 
 function passingParser(): LockfileParser {
-  const graph: DepGraph = { nodes: [node('axios', '1.6.0')], lockfileVersion: 3, degraded: false };
+  const graph: DepGraph = {
+    nodes: [node('axios', '1.6.0')],
+    lockfileVersion: 3,
+    packageManager: 'npm',
+    degraded: false,
+  };
   return { parse: () => ok(graph) };
 }
 
@@ -257,6 +262,7 @@ describe('DockerSandbox — early exit on gating failures', () => {
     const stillVulnerableGraph: DepGraph = {
       nodes: [node('axios', '1.5.5')],
       lockfileVersion: 3,
+      packageManager: 'npm',
       degraded: false,
     };
     const { runtime } = fakeRuntime();

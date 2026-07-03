@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { FixCandidateSchema } from './fix.js';
 import { SeveritySchema } from './advisory.js';
+import { PackageManagerSchema } from './dep-graph.js';
 import { VerificationResultSchema } from './verification.js';
 
 /**
@@ -36,7 +37,13 @@ export const ScanOutputSchema = z.object({
   tool: z.object({ name: z.literal('VeriPatch'), version: z.string() }),
   generatedAt: z.iso.datetime(),
   scan: z.object({
-    lockfileVersion: z.union([z.literal(2), z.literal(3), z.null()]),
+    lockfileVersion: z.union([z.number().int(), z.null()]),
+    /**
+     * Added within schemaVersion 1 (additive). Defaults to null so reports
+     * written by older versions (no such field) still parse — e.g. a
+     * pre-existing last-scan.json read back after an upgrade.
+     */
+    packageManager: PackageManagerSchema.default(null),
     degraded: z.boolean(),
     totalDeps: z.number().int().nonnegative(),
     dataErrors: z.number().int().nonnegative(),

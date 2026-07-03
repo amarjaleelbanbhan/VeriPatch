@@ -53,6 +53,7 @@ export async function runScan(
     generatedAt: new Date().toISOString(),
     scan: {
       lockfileVersion: graph.lockfileVersion,
+      packageManager: graph.packageManager,
       degraded: graph.degraded,
       totalDeps: graph.nodes.length,
       dataErrors,

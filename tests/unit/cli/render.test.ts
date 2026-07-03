@@ -7,7 +7,14 @@ function baseOutput(overrides: Partial<ScanOutput> = {}): ScanOutput {
     schemaVersion: 1,
     tool: { name: 'VeriPatch', version: '0.0.0' },
     generatedAt: '2026-01-01T00:00:00.000Z',
-    scan: { lockfileVersion: 3, degraded: false, totalDeps: 10, dataErrors: 0, stale: false },
+    scan: {
+      lockfileVersion: 3,
+      packageManager: 'npm',
+      degraded: false,
+      totalDeps: 10,
+      dataErrors: 0,
+      stale: false,
+    },
     vulns: [],
     summary: { critical: 0, high: 0, medium: 0, low: 0, verified: 0 },
     ...overrides,
@@ -100,7 +107,14 @@ describe('renderScan — banners', () => {
   it('shows a degraded banner', () => {
     const out = renderScan(
       baseOutput({
-        scan: { lockfileVersion: null, degraded: true, totalDeps: 3, dataErrors: 0, stale: false },
+        scan: {
+          lockfileVersion: null,
+          packageManager: null,
+          degraded: true,
+          totalDeps: 3,
+          dataErrors: 0,
+          stale: false,
+        },
       }),
       noColor,
     );
@@ -111,7 +125,14 @@ describe('renderScan — banners', () => {
   it('shows a stale-cache banner', () => {
     const out = renderScan(
       baseOutput({
-        scan: { lockfileVersion: 3, degraded: false, totalDeps: 3, dataErrors: 0, stale: true },
+        scan: {
+          lockfileVersion: 3,
+          packageManager: 'npm',
+          degraded: false,
+          totalDeps: 3,
+          dataErrors: 0,
+          stale: true,
+        },
       }),
       noColor,
     );
@@ -121,7 +142,14 @@ describe('renderScan — banners', () => {
   it('shows a data-errors banner', () => {
     const out = renderScan(
       baseOutput({
-        scan: { lockfileVersion: 3, degraded: false, totalDeps: 3, dataErrors: 2, stale: false },
+        scan: {
+          lockfileVersion: 3,
+          packageManager: 'npm',
+          degraded: false,
+          totalDeps: 3,
+          dataErrors: 2,
+          stale: false,
+        },
       }),
       noColor,
     );

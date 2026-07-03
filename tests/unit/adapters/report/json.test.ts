@@ -20,7 +20,14 @@ function scan(): ScanOutput {
     schemaVersion: 1,
     tool: { name: 'VeriPatch', version: '0.0.0' },
     generatedAt: '2026-01-01T00:00:00.000Z',
-    scan: { lockfileVersion: 3, degraded: false, totalDeps: 1, dataErrors: 0, stale: false },
+    scan: {
+      lockfileVersion: 3,
+      packageManager: 'npm',
+      degraded: false,
+      totalDeps: 1,
+      dataErrors: 0,
+      stale: false,
+    },
     vulns: [],
     summary: { critical: 0, high: 0, medium: 0, low: 0, verified: 0 },
   };

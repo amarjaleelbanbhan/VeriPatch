@@ -42,6 +42,7 @@ describe('runRescanStep', () => {
     const graph: DepGraph = {
       nodes: [node('axios', '1.6.0')],
       lockfileVersion: 3,
+      packageManager: 'npm',
       degraded: false,
     };
     const step = await runRescanStep(
@@ -57,6 +58,7 @@ describe('runRescanStep', () => {
     const graph: DepGraph = {
       nodes: [node('axios', '1.5.5')],
       lockfileVersion: 3,
+      packageManager: 'npm',
       degraded: false,
     };
     const step = await runRescanStep(
@@ -82,6 +84,7 @@ describe('runRescanStep', () => {
     const graph: DepGraph = {
       nodes: [node('axios', '1.5.5')],
       lockfileVersion: 3,
+      packageManager: 'npm',
       degraded: false,
     };
     const advisorySource: AdvisorySource = {

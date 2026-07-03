@@ -37,7 +37,7 @@ describe('runScan', () => {
 
   it('propagates an advisory source error', async () => {
     const deps: ScanServiceDeps = {
-      parser: fakeParser({ nodes: [], lockfileVersion: 3, degraded: false }),
+      parser: fakeParser({ nodes: [], lockfileVersion: 3, packageManager: 'npm', degraded: false }),
       advisorySource: fakeAdvisorySource(err(AppError.world('ADVISORIES_UNAVAILABLE', 'offline'))),
     };
     const r = await runScan(deps, baseRequest);
@@ -48,7 +48,7 @@ describe('runScan', () => {
   it('produces a schema-shaped ScanOutput with ranked, fix-resolved vulns', async () => {
     const nodes = [node('axios', '1.5.0'), node('lodash', '4.17.21')];
     const deps: ScanServiceDeps = {
-      parser: fakeParser({ nodes, lockfileVersion: 3, degraded: false }),
+      parser: fakeParser({ nodes, lockfileVersion: 3, packageManager: 'npm', degraded: false }),
       advisorySource: fakeAdvisorySource(
         ok({
           advisories: [
@@ -108,7 +108,7 @@ describe('runScan', () => {
       },
     ];
     const deps: ScanServiceDeps = {
-      parser: fakeParser({ nodes, lockfileVersion: 3, degraded: false }),
+      parser: fakeParser({ nodes, lockfileVersion: 3, packageManager: 'npm', degraded: false }),
       advisorySource: fakeAdvisorySource(ok({ advisories, stale: false, dataErrors: 0 })),
     };
 
@@ -124,7 +124,12 @@ describe('runScan', () => {
 
   it('propagates degraded and stale flags from the graph and advisory lookup', async () => {
     const deps: ScanServiceDeps = {
-      parser: fakeParser({ nodes: [], lockfileVersion: null, degraded: true }),
+      parser: fakeParser({
+        nodes: [],
+        lockfileVersion: null,
+        packageManager: null,
+        degraded: true,
+      }),
       advisorySource: fakeAdvisorySource(ok({ advisories: [], stale: true, dataErrors: 2 })),
     };
     const r = await runScan(deps, baseRequest);

@@ -94,7 +94,7 @@ function checkLockfile(cwd: string): DoctorCheck {
   return {
     name: result.value.degraded
       ? 'Lockfile present (degraded: package.json only, verify disabled)'
-      : `Lockfile present (v${String(result.value.lockfileVersion)})`,
+      : `Lockfile present (${result.value.packageManager ?? 'unknown'} v${String(result.value.lockfileVersion)})`,
     pass: !result.value.degraded,
     ...(result.value.degraded ? { hint: 'Run `npm install` to generate package-lock.json.' } : {}),
   };

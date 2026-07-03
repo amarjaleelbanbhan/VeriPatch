@@ -42,7 +42,7 @@ const fixCandidate = {
 describe('domain schemas round-trip', () => {
   it('DepNode / DepGraph', () => {
     expect(DepNodeSchema.parse(depNode)).toEqual(depNode);
-    const graph = { nodes: [depNode], lockfileVersion: 3, degraded: false };
+    const graph = { nodes: [depNode], lockfileVersion: 3, packageManager: 'npm', degraded: false };
     expect(DepGraphSchema.parse(graph)).toEqual(graph);
   });
 
@@ -114,9 +114,22 @@ describe('domain schemas reject invalid input', () => {
     ).toBe(false);
   });
 
-  it('rejects unknown lockfile versions', () => {
+  it('rejects non-integer lockfile versions and unknown package managers', () => {
     expect(
-      DepGraphSchema.safeParse({ nodes: [], lockfileVersion: 1, degraded: false }).success,
+      DepGraphSchema.safeParse({
+        nodes: [],
+        lockfileVersion: 2.5,
+        packageManager: 'npm',
+        degraded: false,
+      }).success,
+    ).toBe(false);
+    expect(
+      DepGraphSchema.safeParse({
+        nodes: [],
+        lockfileVersion: 3,
+        packageManager: 'bower',
+        degraded: false,
+      }).success,
     ).toBe(false);
   });
 

@@ -52,6 +52,11 @@ export class NpmLockfileParser implements LockfileParser {
     const nodes = walkPackages(lock);
     if (!nodes.ok) return nodes;
 
-    return ok({ nodes: nodes.value, lockfileVersion: lock.lockfileVersion, degraded: false });
+    return ok({
+      nodes: nodes.value,
+      lockfileVersion: lock.lockfileVersion,
+      packageManager: 'npm' as const,
+      degraded: false,
+    });
   }
 }

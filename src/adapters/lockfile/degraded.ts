@@ -43,7 +43,7 @@ export function parseDegraded(projectDir: string): Result<DepGraph> {
     }
   }
 
-  const graph = { nodes, lockfileVersion: null, degraded: true };
+  const graph = { nodes, lockfileVersion: null, packageManager: null, degraded: true };
   const validated = DepGraphSchema.safeParse(graph);
   if (!validated.success) {
     const issue = validated.error.issues[0];

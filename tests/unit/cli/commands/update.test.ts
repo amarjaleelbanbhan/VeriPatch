@@ -13,7 +13,14 @@ function writeScan(overrides: Partial<ScanOutput['vulns'][number]> = {}): void {
     schemaVersion: 1,
     tool: { name: 'VeriPatch', version: '0.0.0' },
     generatedAt: '2026-01-01T00:00:00.000Z',
-    scan: { lockfileVersion: 3, degraded: false, totalDeps: 1, dataErrors: 0, stale: false },
+    scan: {
+      lockfileVersion: 3,
+      packageManager: 'npm',
+      degraded: false,
+      totalDeps: 1,
+      dataErrors: 0,
+      stale: false,
+    },
     vulns: [
       {
         id: 'GHSA-1',
