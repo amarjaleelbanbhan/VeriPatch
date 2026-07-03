@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { Command } from 'commander';
 import { runScanCommand } from './commands/scan.js';
+import { runVerifyCommand } from './commands/verify.js';
 import { VERIPATCH_VERSION } from '../shared/version.js';
 
 /**
@@ -53,6 +54,35 @@ export function buildProgram(): Command {
         color: globalOpts?.color ?? true,
         ci: localOpts.ci ?? false,
         dev: devSource === 'cli' ? Boolean(this.opts<{ dev?: boolean }>().dev) : undefined,
+        severity: isSeverityLevel(localOpts.severity) ? localOpts.severity : undefined,
+      });
+      process.exitCode = exitCode;
+    });
+
+  program
+    .command('verify [vulnId]')
+    .description('Prove a fix is safe in a hardened Docker sandbox.')
+    .option('--all', 'verify every feasible vulnerability from the last scan')
+    .option(
+      '--severity <level>',
+      'minimum severity to verify with --all (low|medium|high|critical)',
+    )
+    .action(async function (this: Command, vulnId: string | undefined) {
+      const globalOpts = this.parent?.opts<{
+        verbose?: boolean;
+        config?: string;
+        color: boolean;
+        cwd: string;
+      }>();
+      const localOpts = this.opts<{ all?: boolean; severity?: string }>();
+
+      const exitCode = await runVerifyCommand({
+        cwd: globalOpts?.cwd ?? process.cwd(),
+        configPath: globalOpts?.config,
+        verbose: globalOpts?.verbose ?? false,
+        color: globalOpts?.color ?? true,
+        vulnId,
+        all: localOpts.all ?? false,
         severity: isSeverityLevel(localOpts.severity) ? localOpts.severity : undefined,
       });
       process.exitCode = exitCode;
