@@ -47,16 +47,33 @@ export default defineConfig(
       ],
     },
     rules: {
-      'boundaries/element-types': [
+      'boundaries/dependencies': [
         'error',
         {
           default: 'disallow',
           rules: [
-            { from: 'cli', allow: ['cli', 'services', 'core', 'shared', 'adapters'] },
-            { from: 'services', allow: ['services', 'core', 'shared'] },
-            { from: 'core', allow: ['core', 'shared'] },
-            { from: 'adapters', allow: ['adapters', 'core', 'shared'] },
-            { from: 'shared', allow: ['shared'] },
+            {
+              from: { type: 'cli' },
+              allow: {
+                to: [
+                  { type: 'cli' },
+                  { type: 'services' },
+                  { type: 'core' },
+                  { type: 'shared' },
+                  { type: 'adapters' },
+                ],
+              },
+            },
+            {
+              from: { type: 'services' },
+              allow: { to: [{ type: 'services' }, { type: 'core' }, { type: 'shared' }] },
+            },
+            { from: { type: 'core' }, allow: { to: [{ type: 'core' }, { type: 'shared' }] } },
+            {
+              from: { type: 'adapters' },
+              allow: { to: [{ type: 'adapters' }, { type: 'core' }, { type: 'shared' }] },
+            },
+            { from: { type: 'shared' }, allow: { to: [{ type: 'shared' }] } },
           ],
         },
       ],
