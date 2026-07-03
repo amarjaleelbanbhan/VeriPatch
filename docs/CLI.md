@@ -71,9 +71,10 @@ vuln) to the report directory, and prints the requested `--format` to stdout for
 
 ## `veripatch update <vulnId>`
 
-Applies a verified fix to the **real** working tree by replaying
-`npm install <pkg>@<to> --package-lock-only` — the exact bump the sandbox proved safe. Never
-commits, never pushes; prints a diff summary and a suggested commit message.
+Applies a verified fix to the **real** working tree by replaying the exact change the sandbox
+proved safe: `npm install <pkg>@<to> --package-lock-only` for direct dependencies, or an npm
+`overrides` entry + lockfile regeneration for transitive ones. Never commits, never pushes;
+prints a diff summary and a suggested commit message.
 
 Refuses unless:
 

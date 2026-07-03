@@ -59,9 +59,10 @@ publish automatically — no further manual steps.
       `--concurrency`, max 8), per-candidate output buffered and flushed in input order.
 - [x] **M13 — baseline management UX**: `baseline list|add|remove|prune` with per-entry
       reasons and expiry (an expired acceptance counts as new again in `--ci`).
-- [ ] **M14 — richer overrides strategies**: verify-time parent-bump fallback when an
-      override would violate the parent's engines/peer constraints (deferred from M13 — it
-      needs live-tree analysis during verification, not a rule-engine change).
+- [x] **M14 — strategy-aware fix apply**: transitive fixes now apply via an npm `overrides`
+      entry (sandbox and `update` alike) instead of installing the package as a root
+      dependency. A verify-time parent-bump fallback (for when an override violates the
+      parent's engines/peer constraints) remains future work.
 
 ## Later phases
 
