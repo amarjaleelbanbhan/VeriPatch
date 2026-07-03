@@ -21,7 +21,7 @@ train of small Conventional-Commit changes.
       mapper, `last-scan.json`, `--ci` baseline diff, perf budget (<15s warm on 1,500 deps).
 - [x] **M6 — Sandbox + `verify`**: staging copy, hardened Docker runtime (non-root,
       cap-drop, network phases), pipeline steps, deterministic confidence, security e2e.
-- [ ] **M7 — Reports + `update` + `doctor`**: JSON/MD/pr-comment evidence reports, safe
+- [x] **M7 — Reports + `update` + `doctor`**: JSON/MD/pr-comment evidence reports, safe
       fix apply with refusal rules, environment diagnostics, cache utilities.
 - [ ] **M8 — GitHub Action + docs + release**: composite action, full documentation set,
       changesets + provenance publish, v0.1.0.
