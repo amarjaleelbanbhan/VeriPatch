@@ -46,7 +46,8 @@ jobs:
           node-version: 20
       - run: npx --yes commitlint@19 --extends @commitlint/config-conventional --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
-  # Docker-backed E2E lane lands with M6 (verify pipeline). Gated to ubuntu.
-  # e2e-docker:
-  #   runs-on: ubuntu-latest
-  #   steps: ...
+# Docker-backed security e2e (tests/e2e/security) self-skips when no daemon is
+# reachable, so no separate job is needed: it runs for real on ubuntu-latest
+# (Docker pre-installed on GitHub-hosted runners) as part of `check` above,
+# and is a no-op on macos-latest, matching the blueprint's "ubuntu full incl.
+# Docker E2E, macos unit+integration" matrix intent without extra plumbing.

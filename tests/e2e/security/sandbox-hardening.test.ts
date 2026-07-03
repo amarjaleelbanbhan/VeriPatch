@@ -1,0 +1,155 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import Docker from 'dockerode';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { NpmLockfileParser } from '../../../src/adapters/lockfile/index.js';
+import { DockerSandbox } from '../../../src/adapters/sandbox/index.js';
+import { DockerRuntime } from '../../../src/adapters/sandbox/docker.js';
+import type { AdvisorySource } from '../../../src/core/ports.js';
+import { ok } from '../../../src/shared/result.js';
+
+/**
+ * Security hardening e2e (blueprint §8/§9 T6.9): a real Docker daemon is
+ * required, so this suite is CI-gated (ubuntu runner in ci.yml) and skips
+ * itself entirely when Docker is unreachable — including on this project's
+ * own Windows dev machine, where Docker was never installed.
+ *
+ * Fixture: a package whose postinstall script attempts network egress and a
+ * write outside the sandbox. Both attempts must fail — egress because
+ * `npm ci --ignore-scripts` never runs the script at all, and any residual
+ * host write attempt because the bind mount is the staged *copy*, never the
+ * original project directory.
+ */
+async function dockerReachable(): Promise<boolean> {
+  try {
+    await new Docker().ping();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const noopAdvisorySource: AdvisorySource = {
+  getAdvisories: () => Promise.resolve(ok({ advisories: [], stale: false, dataErrors: 0 })),
+};
+
+describe.skipIf(!(await dockerReachable()))('sandbox hardening (real Docker)', () => {
+  let projectDir: string;
+  let sandbox: DockerSandbox;
+  let marker: string;
+
+  beforeAll(() => {
+    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'veripatch-e2e-security-'));
+    marker = path.join(os.tmpdir(), `veripatch-e2e-marker-${String(Date.now())}`);
+
+    fs.writeFileSync(
+      path.join(projectDir, 'package.json'),
+      JSON.stringify({
+        name: 'security-e2e-fixture',
+        version: '1.0.0',
+        dependencies: {},
+        scripts: {
+          test: 'echo "no tests"',
+        },
+      }),
+    );
+    fs.mkdirSync(path.join(projectDir, 'node_modules', 'malicious-pkg'), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDir, 'node_modules', 'malicious-pkg', 'package.json'),
+      JSON.stringify({
+        name: 'malicious-pkg',
+        version: '1.0.0',
+        scripts: { postinstall: 'node attack.js' },
+      }),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, 'node_modules', 'malicious-pkg', 'attack.js'),
+      [
+        "const https = require('https');",
+        "const fs = require('fs');",
+        // Attempt 1: egress to a real external host.
+        "https.get('https://example.com', () => {}).on('error', () => {});",
+        // Attempt 2: write outside the sandbox mount, onto the (simulated) host path.
+        `try { fs.writeFileSync(${JSON.stringify(marker)}, 'pwned'); } catch (e) {}`,
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, 'package-lock.json'),
+      JSON.stringify({
+        name: 'security-e2e-fixture',
+        version: '1.0.0',
+        lockfileVersion: 3,
+        packages: {
+          '': {
+            name: 'security-e2e-fixture',
+            version: '1.0.0',
+            dependencies: { 'malicious-pkg': '1.0.0' },
+          },
+          'node_modules/malicious-pkg': { version: '1.0.0', integrity: 'sha512-fake' },
+        },
+      }),
+    );
+
+    sandbox = new DockerSandbox(new DockerRuntime(), new NpmLockfileParser(), noopAdvisorySource);
+  });
+
+  afterAll(() => {
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(marker, { force: true });
+  });
+
+  it('a malicious postinstall never executes and never reaches the host filesystem', async () => {
+    const result = await sandbox.run({
+      projectDir,
+      candidate: {
+        vulnId: 'GHSA-e2e-fixture',
+        pkg: 'malicious-pkg',
+        from: '1.0.0',
+        to: '1.0.0',
+        bumpType: 'patch',
+        strategy: 'direct',
+        feasible: true,
+      },
+      config: {
+        testCommand: 'npm test',
+        buildCommand: '',
+        verifyTimeoutMin: 2,
+        sandboxImage: 'node:20-slim',
+      },
+    });
+
+    if (!result.ok) throw result.error;
+    const install = result.value.find((s) => s.step === 'install');
+    expect(install?.status).toBe('pass');
+
+    // The attack script never ran — its host-write side effect must be absent.
+    expect(fs.existsSync(marker)).toBe(false);
+  }, 120_000);
+
+  it('the hardened container reports a non-root uid and dropped capabilities', async () => {
+    const runtime = new DockerRuntime();
+    const pulled = await runtime.pullImageIfMissing('node:20-slim');
+    if (!pulled.ok) throw pulled.error;
+
+    const created = await runtime.createHardenedContainer('node:20-slim', projectDir, 'none');
+    if (!created.ok) throw created.error;
+    const container = created.value;
+    try {
+      const idResult = await container.exec(['id', '-u'], 10_000);
+      expect(idResult.output.trim()).toBe('1000');
+
+      const capResult = await container.exec(
+        ['sh', '-c', 'cat /proc/self/status | grep CapEff'],
+        10_000,
+      );
+      // All capabilities dropped -> effective capability set is all zero bits.
+      expect(capResult.output).toContain('CapEff:\t0000000000000000');
+    } finally {
+      await container.teardown();
+    }
+  }, 60_000);
+});
