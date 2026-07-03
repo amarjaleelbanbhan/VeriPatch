@@ -1,6 +1,6 @@
 {
   "name": "veripatch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Verified remediation for npm vulnerabilities: sandbox-apply fixes, prove elimination, prove safety, emit evidence reports.",
   "keywords": [
     "security",
