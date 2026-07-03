@@ -1,5 +1,6 @@
 import { execFileSync, execSync } from 'node:child_process';
 import path from 'node:path';
+import { detectLockfile } from '../../adapters/lockfile/detect.js';
 import { loadMergedScan } from './shared.js';
 import { loadConfig } from '../../shared/config.js';
 import { AppError } from '../../shared/errors.js';
@@ -89,6 +90,17 @@ export function runUpdateCommand(flags: UpdateCommandFlags): number {
   }
   if (confidence !== undefined && !ACCEPTABLE_CONFIDENCE.has(confidence)) {
     logger.warn(`--force: applying despite a ${confidence} verification confidence.`);
+  }
+
+  const detected = detectLockfile(flags.cwd);
+  if (detected.packageManager !== null && detected.packageManager !== 'npm') {
+    const unsupported = AppError.user(
+      'UPDATE_UNSUPPORTED_PACKAGE_MANAGER',
+      `This project uses ${detected.packageManager} — \`update\` applies fixes with npm and would write a package-lock.json into a ${detected.packageManager} project.`,
+      `Apply the bump manually: \`${detected.packageManager} up ${vuln.pkg}@${vuln.fix.to}\`.`,
+    );
+    logger.error({ code: unsupported.code }, unsupported.message);
+    return errorExitCode(unsupported);
   }
 
   if (!flags.allowDirty) {

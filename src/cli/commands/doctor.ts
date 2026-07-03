@@ -1,6 +1,6 @@
 import Docker from 'dockerode';
 import { AdvisoryCache, DEFAULT_CACHE_DIR } from '../../adapters/cache/db.js';
-import { NpmLockfileParser } from '../../adapters/lockfile/index.js';
+import { detectLockfile } from '../../adapters/lockfile/detect.js';
 import { OsvClient } from '../../adapters/osv/client.js';
 import { DockerRuntime } from '../../adapters/sandbox/docker.js';
 import { loadConfig } from '../../shared/config.js';
@@ -87,7 +87,8 @@ async function checkSandboxImagePullable(image: string): Promise<DoctorCheck> {
 }
 
 function checkLockfile(cwd: string): DoctorCheck {
-  const result = new NpmLockfileParser().parse(cwd);
+  const detected = detectLockfile(cwd);
+  const result = detected.parser.parse(cwd);
   if (!result.ok) {
     return { name: 'Lockfile present and parseable', pass: false, hint: result.error.message };
   }

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { AdvisoryCache, DEFAULT_CACHE_DIR } from '../../adapters/cache/db.js';
-import { NpmLockfileParser } from '../../adapters/lockfile/index.js';
+import { detectLockfile } from '../../adapters/lockfile/detect.js';
 import { OsvClient } from '../../adapters/osv/client.js';
 import { OsvAdvisorySource } from '../../adapters/osv/index.js';
 import { BaselineSchema, type Baseline } from '../../core/models/index.js';
@@ -59,10 +59,17 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
   }
   const cache = cacheResult.value;
 
+  const detected = detectLockfile(flags.cwd);
+  for (const name of detected.ignored) {
+    logger.warn(
+      `Multiple lockfiles found — scanning package-lock.json and ignoring ${name}. Remove one to silence this warning.`,
+    );
+  }
+
   try {
     const scanResult = await runScan(
       {
-        parser: new NpmLockfileParser(),
+        parser: detected.parser,
         advisorySource: new OsvAdvisorySource({
           client: new OsvClient(),
           cache,

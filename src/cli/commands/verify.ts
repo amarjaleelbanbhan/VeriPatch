@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Docker from 'dockerode';
 import { AdvisoryCache, DEFAULT_CACHE_DIR } from '../../adapters/cache/db.js';
-import { NpmLockfileParser } from '../../adapters/lockfile/index.js';
+import { detectLockfile } from '../../adapters/lockfile/detect.js';
 import { OsvClient } from '../../adapters/osv/client.js';
 import { OsvAdvisorySource } from '../../adapters/osv/index.js';
 import { DockerRuntime } from '../../adapters/sandbox/docker.js';
 import { DockerSandbox } from '../../adapters/sandbox/index.js';
 import type { ScanOutput, ScannedVuln, VerificationResult } from '../../core/models/index.js';
+import type { LockfileParser } from '../../core/ports.js';
 import { runScan } from '../../services/scan.js';
 import { verifyCandidate } from '../../services/verify.js';
 import { loadConfig, type Config } from '../../shared/config.js';
@@ -82,7 +83,17 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
   const cache = cacheResult.value;
 
   try {
-    const parser = new NpmLockfileParser();
+    const detected = detectLockfile(flags.cwd);
+    if (detected.packageManager !== null && detected.packageManager !== 'npm') {
+      const unsupported = AppError.user(
+        'VERIFY_UNSUPPORTED_PACKAGE_MANAGER',
+        `This project uses ${detected.packageManager} — the verify sandbox currently replays fixes with npm only.`,
+        `\`veripatch scan\` fully supports ${detected.packageManager}; sandbox verification for it is on the roadmap.`,
+      );
+      logger.error({ code: unsupported.code }, unsupported.message);
+      return errorExitCode(unsupported);
+    }
+    const parser = detected.parser;
     const advisorySource = new OsvAdvisorySource({
       client: new OsvClient(),
       cache,
@@ -155,7 +166,7 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
 async function ensureFreshScan(
   cwd: string,
   config: Config,
-  parser: NpmLockfileParser,
+  parser: LockfileParser,
   advisorySource: OsvAdvisorySource,
 ) {
   const reportDir = path.resolve(cwd, config.reportDir);
