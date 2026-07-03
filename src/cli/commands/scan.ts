@@ -62,7 +62,7 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
   const detected = detectLockfile(flags.cwd);
   for (const name of detected.ignored) {
     logger.warn(
-      `Multiple lockfiles found — scanning package-lock.json and ignoring ${name}. Remove one to silence this warning.`,
+      `Multiple lockfiles found — scanning the ${detected.packageManager ?? 'npm'} lockfile and ignoring ${name}. Remove one to silence this warning.`,
     );
   }
 

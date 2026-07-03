@@ -1,0 +1,32 @@
+lockfileVersion: '6.0'
+
+dependencies:
+  app-lib:
+    specifier: ^1.0.0
+    version: 1.2.3
+  '@scope/util':
+    specifier: ^3.0.0
+    version: 3.1.4
+
+devDependencies:
+  dev-tool:
+    specifier: ^2.0.0
+    version: 2.5.0
+
+packages:
+  /@scope/util@3.1.4:
+    resolution: { integrity: sha512-scopedutilhash }
+
+  /app-lib@1.2.3:
+    resolution: { integrity: sha512-appliphash }
+    dependencies:
+      deep-dep: 2.0.1
+      '@scope/util': 3.1.4
+
+  /deep-dep@2.0.1:
+    resolution: { integrity: sha512-deepdephash }
+
+  /dev-tool@2.5.0:
+    resolution: { integrity: sha512-devtoolhash }
+    dependencies:
+      deep-dep: 2.0.1

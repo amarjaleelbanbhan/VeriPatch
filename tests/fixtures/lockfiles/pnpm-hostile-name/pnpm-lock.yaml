@@ -1,0 +1,15 @@
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      pkg;rm -rf /:
+        specifier: ^1.0.0
+        version: 1.0.0
+
+packages:
+  pkg;rm -rf /@1.0.0:
+    resolution: { integrity: sha512-evilhash }
+
+snapshots:
+  pkg;rm -rf /@1.0.0: {}

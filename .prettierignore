@@ -4,3 +4,4 @@ coverage/
 .veripatch/
 package-lock.json
 CHANGELOG.md
+tests/fixtures/lockfiles/pnpm-corrupt/pnpm-lock.yaml

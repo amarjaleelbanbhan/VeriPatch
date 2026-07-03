@@ -30,12 +30,24 @@ describe('detectLockfile', () => {
     expect(detected.ignored).toEqual([]);
   });
 
-  it('prefers npm when both lockfiles exist, and reports the loser', () => {
+  it('picks pnpm for pnpm-lock.yaml', () => {
+    const detected = detectLockfile(makeProject(['pnpm-lock.yaml', 'package.json']));
+    expect(detected.packageManager).toBe('pnpm');
+    expect(detected.ignored).toEqual([]);
+  });
+
+  it('prefers npm when several lockfiles exist, and reports the losers', () => {
     const detected = detectLockfile(
-      makeProject(['package-lock.json', 'yarn.lock', 'package.json']),
+      makeProject(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'package.json']),
     );
     expect(detected.packageManager).toBe('npm');
-    expect(detected.ignored).toEqual(['yarn.lock']);
+    expect(detected.ignored).toEqual(['yarn.lock', 'pnpm-lock.yaml']);
+  });
+
+  it('prefers yarn over pnpm when npm is absent', () => {
+    const detected = detectLockfile(makeProject(['yarn.lock', 'pnpm-lock.yaml', 'package.json']));
+    expect(detected.packageManager).toBe('yarn');
+    expect(detected.ignored).toEqual(['pnpm-lock.yaml']);
   });
 
   it('falls back to the degraded npm parser with no lockfile at all', () => {
