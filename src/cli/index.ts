@@ -1,4 +1,10 @@
 import { Command } from 'commander';
+import {
+  runBaselineAddCommand,
+  runBaselineListCommand,
+  runBaselinePruneCommand,
+  runBaselineRemoveCommand,
+} from './commands/baseline.js';
 import { runCacheClearCommand, runCacheStatsCommand } from './commands/cache.js';
 import { runDoctorCommand } from './commands/doctor.js';
 import { runReportCommand } from './commands/report.js';
@@ -161,6 +167,56 @@ export function buildProgram(): Command {
         sandboxImage,
       });
       process.exitCode = exitCode;
+    });
+
+  const baselineCommand = program
+    .command('baseline')
+    .description('Manage accepted pre-existing debt (baseline.json).');
+  const baselineGlobals = (cmd: Command) => {
+    const globalOpts = cmd.parent?.parent?.opts<{ config?: string; cwd: string }>();
+    return {
+      cwd: globalOpts?.cwd ?? process.cwd(),
+      configPath: globalOpts?.config,
+    };
+  };
+  baselineCommand
+    .command('list')
+    .description('Show every baselined vuln with its reason, age, and expiry.')
+    .action(function (this: Command) {
+      process.exitCode = runBaselineListCommand(baselineGlobals(this));
+    });
+  baselineCommand
+    .command('add <vulnId>')
+    .description('Accept one finding from the last scan as debt.')
+    .option('--reason <text>', 'why this debt is acceptable (stored in baseline.json)')
+    .option(
+      '--expires-days <n>',
+      'days until the acceptance expires and the vuln counts as new again',
+      (raw: string) => Number.parseInt(raw, 10),
+    )
+    .action(function (this: Command, vulnId: string) {
+      const localOpts = this.opts<{ reason?: string; expiresDays?: number }>();
+      process.exitCode = runBaselineAddCommand({
+        ...baselineGlobals(this),
+        vulnId,
+        reason: localOpts.reason,
+        expiresDays:
+          localOpts.expiresDays !== undefined && Number.isFinite(localOpts.expiresDays)
+            ? localOpts.expiresDays
+            : undefined,
+      });
+    });
+  baselineCommand
+    .command('remove <vulnId>')
+    .description('Stop accepting a vuln as debt.')
+    .action(function (this: Command, vulnId: string) {
+      process.exitCode = runBaselineRemoveCommand({ ...baselineGlobals(this), vulnId });
+    });
+  baselineCommand
+    .command('prune')
+    .description('Drop baseline entries whose vulns no longer appear in the last scan.')
+    .action(function (this: Command) {
+      process.exitCode = runBaselinePruneCommand(baselineGlobals(this));
     });
 
   const cacheCommand = program.command('cache').description('Manage the local advisory cache.');
