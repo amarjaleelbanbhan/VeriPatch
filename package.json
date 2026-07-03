@@ -1,6 +1,6 @@
 {
   "name": "veripatch",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Verified remediation for npm vulnerabilities: sandbox-apply fixes, prove elimination, prove safety, emit evidence reports.",
   "keywords": [
     "security",
@@ -29,6 +29,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
@@ -38,7 +42,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "changeset": "changeset",
+    "release:version": "changeset version",
+    "release:publish": "npm run build && changeset publish"
   },
   "engines": {
     "node": ">=20"
@@ -47,12 +54,16 @@
     "esbuild": "^0.28.1"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
+    "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/dockerode": "^4.0.1",
     "@types/node": "^26.1.0",
     "@types/semver": "^7.7.1",
     "@vitest/coverage-v8": "^4.1.9",
+    "commitlint": "^21.2.0",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
