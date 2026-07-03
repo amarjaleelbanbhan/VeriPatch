@@ -1,0 +1,7 @@
+{
+  "name": "yarn-hostile-name",
+  "version": "1.0.0",
+  "dependencies": {
+    "pkg;rm -rf /": "^1.0.0"
+  }
+}

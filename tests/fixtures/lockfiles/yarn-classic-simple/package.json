@@ -1,0 +1,11 @@
+{
+  "name": "yarn-classic-simple",
+  "version": "1.0.0",
+  "dependencies": {
+    "app-lib": "^1.0.0",
+    "@scope/util": "^3.0.0"
+  },
+  "devDependencies": {
+    "dev-tool": "^2.0.0"
+  }
+}

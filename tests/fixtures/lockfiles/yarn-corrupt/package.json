@@ -1,0 +1,7 @@
+{
+  "name": "yarn-corrupt",
+  "version": "1.0.0",
+  "dependencies": {
+    "app-lib": "^1.0.0"
+  }
+}

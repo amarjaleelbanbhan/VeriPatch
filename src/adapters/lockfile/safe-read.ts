@@ -10,14 +10,27 @@ import { err, ok, type Result } from '../../shared/result.js';
  */
 export const MAX_JSON_BYTES = 50 * 1024 * 1024; // 50MB
 
-export function readJsonFile(filePath: string, maxBytes = MAX_JSON_BYTES): Result<unknown> {
+/**
+ * Hardened plain-text reader with the same stat/size discipline as
+ * readJsonFile — for lockfile formats that are not JSON (yarn, pnpm).
+ */
+export function readTextFile(filePath: string, maxBytes = MAX_JSON_BYTES): Result<string> {
+  const checked = statFile(filePath, maxBytes);
+  if (!checked.ok) return checked;
+  try {
+    return ok(fs.readFileSync(filePath, 'utf8'));
+  } catch (cause) {
+    return err(AppError.world('FILE_UNREADABLE', `Could not read ${filePath}`, undefined, cause));
+  }
+}
+
+function statFile(filePath: string, maxBytes: number): Result<fs.Stats> {
   let stat: fs.Stats;
   try {
     stat = fs.statSync(filePath);
   } catch {
     return err(AppError.user('FILE_NOT_FOUND', `File not found: ${filePath}`));
   }
-
   if (!stat.isFile()) {
     return err(AppError.user('NOT_A_FILE', `Not a regular file: ${filePath}`));
   }
@@ -30,13 +43,13 @@ export function readJsonFile(filePath: string, maxBytes = MAX_JSON_BYTES): Resul
       ),
     );
   }
+  return ok(stat);
+}
 
-  let raw: string;
-  try {
-    raw = fs.readFileSync(filePath, 'utf8');
-  } catch (cause) {
-    return err(AppError.world('FILE_UNREADABLE', `Could not read ${filePath}`, undefined, cause));
-  }
+export function readJsonFile(filePath: string, maxBytes = MAX_JSON_BYTES): Result<unknown> {
+  const rawResult = readTextFile(filePath, maxBytes);
+  if (!rawResult.ok) return rawResult;
+  const raw = rawResult.value;
 
   let parsed: unknown;
   try {
