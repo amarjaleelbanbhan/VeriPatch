@@ -1,0 +1,27 @@
+name: Demo (manual)
+
+# Manually-triggered proof run: exercises the real, published composite
+# Action (this repo's own action.yml) end-to-end against a fixture with a
+# real, currently-known npm vulnerability -- scan, then a full Docker-
+# sandboxed verify, on a real ubuntu-latest runner. Not part of the normal
+# CI/release pipeline; exists to demonstrate the tool working for real.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run VeriPatch against the demo fixture
+        uses: ./
+        with:
+          working-directory: examples/demo-project
+          severity-threshold: low
+          fail-on: any
+          verify: true
+          verify-severity-threshold: high

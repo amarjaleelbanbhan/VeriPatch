@@ -1,0 +1,13 @@
+{
+  "name": "veripatch-demo-project",
+  "version": "1.0.0",
+  "description": "Fixture with a real, currently-patchable npm vulnerability, used by .github/workflows/demo.yml to exercise the full scan/verify pipeline against a real Docker sandbox in CI.",
+  "private": true,
+  "dependencies": {
+    "axios": "0.21.1"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "test": "echo 'no tests'"
+  }
+}
