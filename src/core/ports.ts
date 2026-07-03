@@ -1,4 +1,4 @@
-import type { Advisory, DepGraph, DepNode } from './models/index.js';
+import type { Advisory, DepGraph, DepNode, FixCandidate, StepResult } from './models/index.js';
 import type { Result } from '../shared/result.js';
 
 /**
@@ -22,4 +22,30 @@ export interface AdvisorySource {
   getAdvisories(nodes: DepNode[]): Promise<Result<AdvisoryLookup>>;
 }
 
-// Sandbox and Reporter ports land with M6/M7 alongside their domain types.
+export interface SandboxConfig {
+  testCommand: string;
+  buildCommand: string;
+  verifyTimeoutMin: number;
+  sandboxImage: string;
+}
+
+export interface SandboxPlan {
+  /** The real project directory — the Sandbox stages its own isolated copy. */
+  projectDir: string;
+  candidate: FixCandidate;
+  config: SandboxConfig;
+}
+
+/**
+ * Optional per-step callback, invoked as each pipeline step completes.
+ * Additive over the blueprint's literal `run(plan): Promise<Result<StepResult[]>>`
+ * signature — needed to drive the CLI's live step ticker without changing the
+ * documented return shape.
+ */
+export type StepListener = (step: StepResult) => void;
+
+export interface Sandbox {
+  run(plan: SandboxPlan, onStep?: StepListener): Promise<Result<StepResult[]>>;
+}
+
+// Reporter port lands with M7 alongside its domain types.
