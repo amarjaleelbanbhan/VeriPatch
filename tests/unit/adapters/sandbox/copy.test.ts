@@ -60,6 +60,22 @@ describe('stageProjectCopy', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe('WorldError');
   });
+
+  it('makes every staged file/dir world-writable regardless of the host uid (POSIX only)', () => {
+    if (process.platform === 'win32') return; // POSIX mode bits are advisory on Windows
+    const result = stageProjectCopy(projectDir);
+    if (!result.ok) throw result.error;
+    staged = result.value;
+
+    const fileMode = fs.statSync(path.join(staged.stagingDir, 'package.json')).mode & 0o777;
+    const dirMode = fs.statSync(path.join(staged.stagingDir, 'src')).mode & 0o777;
+    // The container's fixed non-root uid may not be the uid that owns these
+    // files on the host (Docker bind mounts don't remap ownership) — the
+    // staging step must open write access to everyone so the bind-mounted
+    // container never hits EACCES regardless of whose uid created them.
+    expect(fileMode & 0o222).toBe(0o222); // write bit set for owner/group/other
+    expect(dirMode & 0o222).toBe(0o222);
+  });
 });
 
 describe('cleanupStagedProject', () => {
