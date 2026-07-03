@@ -57,8 +57,18 @@ function makeWorldReadWritable(root: string): void {
   fs.chmodSync(root, 0o777);
 }
 
+/**
+ * Best-effort: cleanup runs from a `finally` block after a verification
+ * result has already been produced, so a leftover-temp-dir problem must
+ * never throw and silently replace a successful result with a crash.
+ */
 export function cleanupStagedProject(staged: StagedProject): void {
-  fs.rmSync(staged.stagingDir, { recursive: true, force: true });
+  try {
+    fs.rmSync(staged.stagingDir, { recursive: true, force: true });
+  } catch {
+    // Best-effort — a stray temp directory is far less harmful than
+    // discarding an otherwise-valid verification result.
+  }
 }
 
 function isExcluded(sourcePath: string): boolean {

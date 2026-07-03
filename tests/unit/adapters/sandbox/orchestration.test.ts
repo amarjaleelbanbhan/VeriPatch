@@ -163,6 +163,46 @@ describe('DockerSandbox — happy path', () => {
     if (!result.ok) throw result.error;
     expect(disconnects).toEqual(['container-1']);
   });
+
+  it('reopens staged-file permissions from inside the container before teardown', async () => {
+    const { runtime, calls } = fakeRuntime();
+    const sandbox = new DockerSandbox(runtime, passingParser(), fakeAdvisorySource());
+
+    const result = await sandbox.run({ projectDir, candidate: candidate(), config });
+    if (!result.ok) throw result.error;
+    // Anything npm creates inside the bind-mounted staging dir is owned by
+    // the container's uid, which the host can't always delete afterward
+    // (blueprint §9 non-root hardening + Docker's lack of uid remapping) --
+    // this chmod is what makes host-side cleanup possible regardless.
+    expect(calls.at(-1)).toEqual(['chmod', '-R', 'a+rwX', '/workspace']);
+  });
+
+  it('does not fail the run when the permission-reopen chmod itself fails', async () => {
+    const container: ContainerHandle = {
+      id: 'container-1',
+      exec: (cmd) => {
+        if (cmd[0] === 'chmod') return Promise.reject(new Error('container already gone'));
+        return Promise.resolve(pass());
+      },
+      teardown: () => Promise.resolve(),
+    };
+    const runtime: SandboxRuntime = {
+      pullImageIfMissing: () => Promise.resolve(ok(undefined)),
+      createHardenedContainer: () => Promise.resolve(ok(container)),
+      createIsolatedNetwork: () =>
+        Promise.resolve(
+          ok({
+            id: 'net-1',
+            disconnect: () => Promise.resolve(undefined),
+            remove: () => Promise.resolve(undefined),
+          }),
+        ),
+    };
+    const sandbox = new DockerSandbox(runtime, passingParser(), fakeAdvisorySource());
+
+    const result = await sandbox.run({ projectDir, candidate: candidate(), config });
+    expect(result.ok).toBe(true);
+  });
 });
 
 describe('DockerSandbox — early exit on gating failures', () => {
@@ -185,8 +225,11 @@ describe('DockerSandbox — early exit on gating failures', () => {
       build: 'skipped',
       test: 'skipped',
     });
-    // only the apply exec ran — install/build/test never touched the container
-    expect(calls).toHaveLength(1);
+    // only apply and the final cleanup chmod ran — install/build/test never touched the container
+    expect(calls).toEqual([
+      ['npm', 'install', 'axios@1.6.0', '--package-lock-only'],
+      ['chmod', '-R', 'a+rwX', '/workspace'],
+    ]);
   });
 
   it('stops after a failing install and marks rescan/build/test skipped', async () => {

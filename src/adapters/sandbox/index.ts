@@ -76,9 +76,31 @@ export class DockerSandbox implements Sandbox {
       await this.runSteps(container, network, staged.value.stagingDir, plan, timeoutMs, emit);
       return ok(steps);
     } finally {
+      await this.reopenStagedPermissions(container, timeoutMs);
       await container.teardown();
       await network.teardown();
       cleanupStagedProject(staged.value);
+    }
+  }
+
+  /**
+   * Anything the container creates in the bind-mounted staging dir (e.g.
+   * node_modules from `npm ci`) is owned by the container's fixed uid, which
+   * Docker never remaps to the host's uid — so the host cleanup below can
+   * hit EACCES trying to delete files/directories it doesn't have write
+   * permission on, even though it created the staging directory itself.
+   * Re-opening permissions from inside the container (as the uid that
+   * actually owns those new files) avoids that entirely; best-effort since
+   * cleanup already degrades gracefully if this doesn't fully succeed.
+   */
+  private async reopenStagedPermissions(
+    container: ContainerHandle,
+    timeoutMs: number,
+  ): Promise<void> {
+    try {
+      await container.exec(['chmod', '-R', 'a+rwX', '/workspace'], Math.min(timeoutMs, 30_000));
+    } catch {
+      // best-effort
     }
   }
 

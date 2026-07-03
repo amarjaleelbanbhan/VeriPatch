@@ -86,4 +86,13 @@ describe('cleanupStagedProject', () => {
     expect(fs.existsSync(result.value.stagingDir)).toBe(false);
     staged = undefined;
   });
+
+  it('never throws, even for a directory that no longer exists', () => {
+    // Called from a `finally` block after a result has already been
+    // produced — a cleanup failure must never replace a successful
+    // result with a crash.
+    expect(() => {
+      cleanupStagedProject({ stagingDir: '/does/not/exist' });
+    }).not.toThrow();
+  });
 });
