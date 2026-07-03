@@ -52,7 +52,9 @@ publish automatically — no further manual steps.
       explicit verify/update refusal (the sandbox replays fixes with npm only for now).
 - [x] **M10 — pnpm lockfile adapter**: pnpm-lock.yaml v6/v9 → DepGraph via the shared
       flat-graph builder, peer-suffix merging, three-way CLI detection, same corpus discipline.
-- [ ] **M11 — npm workspaces / monorepos**: per-workspace attribution, scan/verify from the root.
+- [x] **M11 — npm workspaces / monorepos**: workspace members contribute edges and name
+      provenance chains (never vulnerability nodes themselves); manifest-declared deps are
+      direct; scan works from the monorepo root.
 - [ ] **M12 — parallel verification**: bounded job pool, deterministic result ordering.
 - [ ] **M13 — baseline management UX + richer overrides strategies.**
 
