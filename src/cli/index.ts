@@ -77,6 +77,11 @@ export function buildProgram(): Command {
       '--severity <level>',
       'minimum severity to verify with --all (low|medium|high|critical)',
     )
+    .option(
+      '--concurrency <n>',
+      'sandbox verifications to run in parallel with --all (1-8)',
+      (raw: string) => Number.parseInt(raw, 10),
+    )
     .action(async function (this: Command, vulnId: string | undefined) {
       const globalOpts = this.parent?.opts<{
         verbose?: boolean;
@@ -84,7 +89,7 @@ export function buildProgram(): Command {
         color: boolean;
         cwd: string;
       }>();
-      const localOpts = this.opts<{ all?: boolean; severity?: string }>();
+      const localOpts = this.opts<{ all?: boolean; severity?: string; concurrency?: number }>();
 
       const exitCode = await runVerifyCommand({
         cwd: globalOpts?.cwd ?? process.cwd(),
@@ -94,6 +99,7 @@ export function buildProgram(): Command {
         vulnId,
         all: localOpts.all ?? false,
         severity: isSeverityLevel(localOpts.severity) ? localOpts.severity : undefined,
+        concurrency: localOpts.concurrency,
       });
       process.exitCode = exitCode;
     });

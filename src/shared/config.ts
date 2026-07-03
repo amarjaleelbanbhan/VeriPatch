@@ -19,6 +19,8 @@ export const ConfigSchema = z.object({
     .int()
     .positive()
     .max(24 * 60),
+  /** Sandbox verifications run concurrently with `verify --all`. Each one is a full container + network, so the ceiling is deliberately low. */
+  verifyConcurrency: z.number().int().min(1).max(8),
   sandboxImage: z.string().min(1),
   cacheTtlHours: z
     .number()
@@ -35,6 +37,7 @@ export const DEFAULT_CONFIG: Config = {
   testCommand: 'npm test',
   buildCommand: 'npm run build',
   verifyTimeoutMin: 10,
+  verifyConcurrency: 1,
   sandboxImage: 'node:20-slim',
   cacheTtlHours: 24,
   reportDir: '.veripatch',
@@ -223,6 +226,7 @@ function expectedTypeOf(key: keyof Config): 'boolean' | 'number' | 'string' | 's
     case 'includeDevDeps':
       return 'boolean';
     case 'verifyTimeoutMin':
+    case 'verifyConcurrency':
     case 'cacheTtlHours':
       return 'number';
     case 'ignore':

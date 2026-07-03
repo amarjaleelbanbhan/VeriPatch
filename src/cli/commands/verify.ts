@@ -13,6 +13,7 @@ import { runScan } from '../../services/scan.js';
 import { verifyCandidate } from '../../services/verify.js';
 import { loadConfig, type Config } from '../../shared/config.js';
 import { AppError } from '../../shared/errors.js';
+import { mapWithConcurrency } from '../../shared/pool.js';
 import { createLogger } from '../../shared/logger.js';
 import { errorExitCode } from '../exit-code.js';
 
@@ -31,6 +32,8 @@ export interface VerifyCommandFlags {
   vulnId: string | undefined;
   all: boolean;
   severity: Config['severityThreshold'] | undefined;
+  /** --concurrency override for config.verifyConcurrency. */
+  concurrency: number | undefined;
 }
 
 const LAST_SCAN_FILE_NAME = 'last-scan.json';
@@ -49,6 +52,9 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
     cwd: flags.cwd,
     ...(flags.configPath !== undefined ? { configPath: flags.configPath } : {}),
     env: process.env,
+    cliFlags: {
+      ...(flags.concurrency !== undefined ? { verifyConcurrency: flags.concurrency } : {}),
+    },
   });
   if (!configResult.ok) {
     logger.error({ code: configResult.error.code }, configResult.error.message);
@@ -128,8 +134,28 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
     const reportDir = path.resolve(flags.cwd, config.reportDir);
     let overallExit = 0;
 
-    for (const vuln of candidates) {
-      process.stdout.write(`\n${vuln.id} (${vuln.pkg} ${vuln.fix.from} -> ${vuln.fix.to})\n`);
+    // With concurrency 1 the per-step ticker streams live. Above that,
+    // interleaved tickers would be unreadable, so each candidate's output is
+    // buffered and flushed in input order as soon as its turn completes —
+    // output stays deterministic regardless of which sandbox finishes first.
+    const concurrency = Math.max(1, Math.min(config.verifyConcurrency, candidates.length));
+    const live = concurrency === 1;
+    const buffers = candidates.map(() => [] as string[]);
+    const completed = candidates.map(() => false);
+    let flushedUpTo = 0;
+    const flushInOrder = (): void => {
+      while (flushedUpTo < candidates.length && completed[flushedUpTo] === true) {
+        process.stdout.write((buffers[flushedUpTo] ?? []).join(''));
+        flushedUpTo++;
+      }
+    };
+
+    await mapWithConcurrency(candidates, concurrency, async (vuln, index) => {
+      const out = (line: string): void => {
+        if (live) process.stdout.write(line);
+        else buffers[index]?.push(line);
+      };
+      out(`\n${vuln.id} (${vuln.pkg} ${vuln.fix.from} -> ${vuln.fix.to})\n`);
       const result = await verifyCandidate(
         sandbox,
         {
@@ -144,18 +170,20 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
         },
         (step) => {
           const icon = step.status === 'pass' ? '✅' : step.status === 'skipped' ? '–' : '❌';
-          process.stdout.write(`  ${icon} ${step.step}\n`);
+          out(`  ${icon} ${step.step}\n`);
         },
       );
 
       if (!result.ok) {
         logger.error({ code: result.error.code }, result.error.message);
         overallExit = errorExitCode(result.error);
-        continue;
+      } else {
+        persistRunArtifacts(reportDir, result.value);
+        out(`  verdict: ${result.value.confidence}\n`);
       }
-      persistRunArtifacts(reportDir, result.value);
-      process.stdout.write(`  verdict: ${result.value.confidence}\n`);
-    }
+      completed[index] = true;
+      if (!live) flushInOrder();
+    });
 
     return overallExit;
   } finally {
