@@ -24,25 +24,25 @@ describe('deriveNameFromLocation', () => {
 });
 
 describe('resolveDependency', () => {
-  const byLocation = new Map(
-    ['node_modules/a', 'node_modules/b', 'node_modules/a/node_modules/b'].map((loc) => [
-      loc,
-      { location: loc, name: 'x', entry: {} },
-    ]),
-  );
+  const locations = new Set(['node_modules/a', 'node_modules/b', 'node_modules/a/node_modules/b']);
+  const lookup = (candidate: string) => (locations.has(candidate) ? candidate : undefined);
 
   it('prefers the nearest nested copy', () => {
-    expect(resolveDependency('node_modules/a', 'b', byLocation)).toBe(
-      'node_modules/a/node_modules/b',
-    );
+    expect(resolveDependency('node_modules/a', 'b', lookup)).toBe('node_modules/a/node_modules/b');
   });
 
   it('walks up to the top level', () => {
-    expect(resolveDependency('node_modules/b', 'a', byLocation)).toBe('node_modules/a');
+    expect(resolveDependency('node_modules/b', 'a', lookup)).toBe('node_modules/a');
   });
 
   it('returns undefined for unmet deps', () => {
-    expect(resolveDependency('node_modules/a', 'ghost', byLocation)).toBeUndefined();
+    expect(resolveDependency('node_modules/a', 'ghost', lookup)).toBeUndefined();
+  });
+
+  it('resolves through the lookup to a link target', () => {
+    const withLink = (candidate: string) =>
+      candidate === 'node_modules/ws-b' ? 'packages/b' : lookup(candidate);
+    expect(resolveDependency('packages/a', 'ws-b', withLink)).toBe('packages/b');
   });
 });
 

@@ -102,6 +102,39 @@ describe('NpmLockfileParser on the fixture corpus', () => {
     expect(d.dev).toBe(true);
   });
 
+  it('workspaces: members attribute paths but are never vulnerability nodes', () => {
+    const r = parser.parse(path.join(FIXTURES, 'v3-workspaces'));
+    if (!r.ok) throw r.error;
+    const g = r.value;
+
+    // only registry packages appear — @ws/app and @ws/lib are first-party
+    expect(g.nodes.map((n) => `${n.name}@${n.version}`)).toEqual([
+      'app-dev-dep@4.1.0',
+      'lib-only-dep@3.0.1',
+      'root-dep@1.5.0',
+      'shared-dep@2.2.0',
+    ]);
+
+    // provenance chains pass through workspace names
+    const libOnly = g.nodes.find((n) => n.name === 'lib-only-dep')!;
+    expect(libOnly.paths).toContainEqual(['root', '@ws/lib', 'lib-only-dep']);
+    // ...including cross-workspace hops (@ws/app depends on @ws/lib)
+    expect(libOnly.paths).toContainEqual(['root', '@ws/app', '@ws/lib', 'lib-only-dep']);
+
+    // declared in a workspace manifest → direct (fixable in that manifest)
+    const shared = g.nodes.find((n) => n.name === 'shared-dep')!;
+    expect(shared.direct).toBe(true);
+    expect(shared.paths).toContainEqual(['root', '@ws/app', 'shared-dep']);
+
+    // dev flag still comes from the lockfile entry
+    const dev = g.nodes.find((n) => n.name === 'app-dev-dep')!;
+    expect(dev.dev).toBe(true);
+
+    const rootDep = g.nodes.find((n) => n.name === 'root-dep')!;
+    expect(rootDep).toMatchObject({ direct: true, dev: false });
+    expect(rootDep.paths).toEqual([['root', 'root-dep']]);
+  });
+
   it('no project at all: NO_MANIFEST UserError', () => {
     const r = parser.parse(path.join(FIXTURES, 'does-not-exist'));
     expect(r.ok).toBe(false);

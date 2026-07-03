@@ -37,42 +37,81 @@ export function walkPackages(lock: RawLockfile): Result<DepNode[]> {
     );
   }
 
-  // Index installed entries by location. Skip links/workspace paths (non-goal for MVP)
-  // and entries without a version (unresolvable).
+  // Index entries by location, in three kinds:
+  // - registry installs ("node_modules/...") — the only vulnerability nodes
+  // - workspace members ("packages/foo") — first-party code: they name
+  //   provenance paths and contribute edges, but are never output nodes
+  //   (matching them against registry advisories would be a false positive)
+  // - links ("node_modules/foo" → "packages/foo") — aliases that make
+  //   cross-workspace dependencies resolve to the workspace entry
   const byLocation = new Map<string, LocationEntry>();
+  const workspaces = new Map<string, { name: string; entry: RawPackageEntry }>();
+  const linkTargets = new Map<string, string>();
   for (const [location, entry] of Object.entries(packages)) {
     if (location === '') continue;
-    if (entry.link === true || entry.version === undefined) continue;
-    if (!location.includes(NODE_MODULES_SEG)) continue; // e.g. workspaces "packages/foo"
+    if (entry.link === true) {
+      if (entry.resolved !== undefined) linkTargets.set(location, entry.resolved);
+      continue;
+    }
+    if (entry.version === undefined) continue;
+    if (!location.includes(NODE_MODULES_SEG)) {
+      const name = entry.name ?? location.split('/').at(-1);
+      if (name !== undefined && name.length > 0) workspaces.set(location, { name, entry });
+      continue;
+    }
     const name = entry.name ?? deriveNameFromLocation(location);
     if (name === undefined) continue;
     byLocation.set(location, { location, name, entry });
   }
 
-  // Resolved dependency edges, location → locations.
-  const edges = new Map<string, string[]>();
-  const rootDeps = allDependencyNames(root, true);
-  const rootEdge: string[] = [];
-  for (const depName of rootDeps) {
-    const target = resolveDependency('', depName, byLocation);
-    if (target !== undefined) rootEdge.push(target);
-  }
-  edges.set('', rootEdge);
+  // A resolution candidate is valid if it's a registry install, or a link
+  // whose target is a known workspace (the edge then points at the workspace).
+  const lookupCandidate = (candidate: string): string | undefined => {
+    if (byLocation.has(candidate)) return candidate;
+    const linked = linkTargets.get(candidate);
+    if (linked !== undefined && workspaces.has(linked)) return linked;
+    return undefined;
+  };
 
-  for (const { location, entry } of byLocation.values()) {
+  const resolveNames = (fromLocation: string, depNames: string[]): string[] => {
     const targets: string[] = [];
-    for (const depName of allDependencyNames(entry, false)) {
-      const target = resolveDependency(location, depName, byLocation);
+    for (const depName of depNames) {
+      const target = resolveDependency(fromLocation, depName, lookupCandidate);
       if (target !== undefined) targets.push(target);
     }
+    return targets;
+  };
+
+  // Resolved dependency edges, location → locations. The root reaches its own
+  // deps plus every workspace member; workspace members reach their declared
+  // deps (dev included — each is the root of its own manifest).
+  const edges = new Map<string, string[]>();
+  const rootEdge = [...resolveNames('', allDependencyNames(root, true)), ...workspaces.keys()];
+  edges.set('', rootEdge);
+
+  const manifestDeclared = new Set<string>();
+  for (const [location, { entry }] of workspaces) {
+    const targets = resolveNames(location, allDependencyNames(entry, true));
     edges.set(location, targets);
+    for (const t of targets) manifestDeclared.add(t);
+  }
+
+  for (const { location, entry } of byLocation.values()) {
+    edges.set(location, resolveNames(location, allDependencyNames(entry, false)));
   }
 
   const namesByLocation = new Map(
     [...byLocation.values()].map(({ location, name }) => [location, name]),
   );
+  for (const [location, { name }] of workspaces) namesByLocation.set(location, name);
+
   const pathsByLocation = collectPaths(namesByLocation, edges);
-  const directLocations = new Set(rootEdge);
+  // Direct = declared in a manifest a human can edit: the root's package.json
+  // or any workspace member's.
+  const directLocations = new Set([
+    ...rootEdge.filter((loc) => byLocation.has(loc)),
+    ...manifestDeclared,
+  ]);
 
   // Merge instances of the same name@version installed at multiple locations.
   const merged = new Map<string, DepNode>();
@@ -142,18 +181,20 @@ function allDependencyNames(entry: RawPackageEntry, isRoot: boolean): string[] {
 
 /**
  * npm resolution: from `fromLocation`, the dependency `depName` resolves to the
- * nearest "node_modules/<depName>" walking up the tree.
+ * nearest "node_modules/<depName>" walking up the tree. `lookup` maps a
+ * candidate location to its canonical target (itself, or a link's workspace).
  */
 export function resolveDependency(
   fromLocation: string,
   depName: string,
-  byLocation: ReadonlyMap<string, LocationEntry>,
+  lookup: (candidate: string) => string | undefined,
 ): string | undefined {
   let base = fromLocation;
   for (;;) {
     const candidate =
       base === '' ? `${NODE_MODULES_SEG}${depName}` : `${base}/${NODE_MODULES_SEG}${depName}`;
-    if (byLocation.has(candidate)) return candidate;
+    const target = lookup(candidate);
+    if (target !== undefined) return target;
     if (base === '') return undefined; // unresolved (unmet optional/peer)
     base = parentLocation(base);
   }

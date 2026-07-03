@@ -11,6 +11,8 @@ export const RawPackageEntrySchema = z
     dev: z.boolean().optional(),
     optional: z.boolean().optional(),
     link: z.boolean().optional(),
+    /** For link entries: the in-repo directory the link points at (workspaces). */
+    resolved: z.string().optional(),
     integrity: z.string().optional(),
     dependencies: z.record(z.string(), z.string()).optional(),
     devDependencies: z.record(z.string(), z.string()).optional(),
