@@ -8,11 +8,11 @@ train of small Conventional-Commit changes.
 
 - [x] **M0 — Repo bootstrap**: toolchain (TS strict, tsup, ESLint layer boundaries, Prettier,
       Vitest + coverage), CI matrix, layered skeleton, license and docs stubs.
-- [ ] **M1 — Core models + config**: domain types with zod schemas, `Result<T>`/`AppError`,
+- [x] **M1 — Core models + config**: domain types with zod schemas, `Result<T>`/`AppError`,
       structured logger with redaction, config loader with 4-layer precedence.
-- [ ] **M2 — Lockfile parser**: hardened reader (size cap, null-proto), package-lock v2/v3
+- [x] **M2 — Lockfile parser**: hardened reader (size cap, null-proto), package-lock v2/v3
       walkers, degraded mode (no lockfile), hostile-input corpus, contract tests.
-- [ ] **M3 — Advisory client + cache**: OSV querybatch client (chunking, retry/backoff),
+- [x] **M3 — Advisory client + cache**: OSV querybatch client (chunking, retry/backoff),
       detail hydration, SQLite cache with TTL + offline stale-serve, sanitizer.
 - [ ] **M4 — Rule engine**: semver vulnerability matching (edge-case table), severity
       ranking + filters, deterministic fix resolution (direct/override/parent-bump),
