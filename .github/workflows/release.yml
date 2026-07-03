@@ -31,6 +31,18 @@ jobs:
       - run: npm run check
       - run: npm run build
 
+      # npm's OIDC Trusted Publishing handshake (used below, since this
+      # workflow has no NPM_TOKEN) is only implemented starting in npm
+      # ~11.5.1. Node 20 bundles npm 10.8.2, which has no idea trusted
+      # publishing exists -- it silently falls back to a plain anonymous
+      # publish attempt, which the registry rejects with a bare 404 (not
+      # 403, so it doesn't leak package existence to unauthenticated
+      # callers). This is what broke the 0.1.1 release: provenance signing
+      # succeeded but the actual `npm publish` PUT still 404'd. Upgrading
+      # here (after `npm ci`, which needs the runner's original npm/lockfile
+      # pairing) fixes it.
+      - run: npm install -g npm@latest
+
       # If unreleased changesets exist on main, opens/updates a "Version
       # Packages" PR. If that PR was just merged (main already has the
       # version bump and no changesets left), publishes to npm instead.
