@@ -51,6 +51,12 @@ runs:
       shell: bash
       run: npm install --global "veripatch@${{ inputs.version }}"
 
+    # Deliberately never fails this step on "vulnerabilities found" (exit 1)
+    # -- only a genuine tool error (exit 2) halts the job here. The scan
+    # verdict is enforced by "Apply fail-on policy" at the very end, after
+    # Verify has had its chance to run; otherwise a common combination like
+    # verify: true + fail-on: any would abort before Verify ever started,
+    # since GitHub Actions skips later composite steps once one fails.
     - name: Scan
       id: scan
       shell: bash
@@ -58,16 +64,30 @@ runs:
       env:
         SEVERITY: ${{ inputs.severity-threshold }}
       run: |
+        echo "DEBUG which veripatch: $(which veripatch || echo NOT_FOUND)"
+        veripatch --version || echo "DEBUG version check failed: $?"
+
         set +e
-        veripatch scan --ci --json --severity "$SEVERITY" > veripatch-report.json
+        veripatch scan --ci --json --severity "$SEVERITY" > veripatch-report.json 2> veripatch-stderr.txt
         scan_exit=$?
         set -e
 
+        echo "DEBUG scan_exit=$scan_exit"
+        echo "DEBUG stdout bytes: $(wc -c < veripatch-report.json)"
+        echo "DEBUG stderr contents:"
+        cat veripatch-stderr.txt
+
         echo "report-json=$(pwd)/veripatch-report.json" >> "$GITHUB_OUTPUT"
+        echo "exit-code=$scan_exit" >> "$GITHUB_OUTPUT"
         if [ "$scan_exit" -eq 1 ]; then
           echo "vulnerabilities-found=true" >> "$GITHUB_OUTPUT"
         else
           echo "vulnerabilities-found=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        if [ "$scan_exit" -eq 2 ]; then
+          echo "VeriPatch scan errored (exit 2) — see logs above." >&2
+          exit 2
         fi
 
         node -e '
@@ -77,17 +97,6 @@ runs:
             console.log(`::warning file=package.json::${vuln.id} in ${vuln.pkg}@${vuln.installed} (${vuln.severity.label}) — fix: ${fix}`);
           }
         '
-
-        if [ "$scan_exit" -eq 2 ]; then
-          echo "VeriPatch scan errored (exit 2) — see logs above." >&2
-          exit 2
-        fi
-        if [ "${{ inputs.fail-on }}" = "any" ] && [ "$scan_exit" -eq 1 ]; then
-          exit 1
-        fi
-        if [ "${{ inputs.fail-on }}" = "new" ]; then
-          exit "$scan_exit"
-        fi
         exit 0
 
     - name: Upload scan report
@@ -120,3 +129,28 @@ runs:
       uses: marocchino/sticky-pull-request-comment@331f8f5b4215f0445d3c07b4967662a32a2d3e31 # v2.9.0
       with:
         path: ${{ inputs.working-directory }}/pr-comment.md
+
+    # The one place scan's vulnerabilities-found verdict actually fails the
+    # job -- deliberately last, so Verify/PR-comment steps above always ran
+    # first regardless of fail-on. `if: always()` means this still runs (and
+    # still enforces the policy) even if Verify itself failed for its own
+    # reasons above; that earlier failure already fails the job on its own.
+    - name: Apply fail-on policy
+      if: always()
+      shell: bash
+      run: |
+        scan_exit="${{ steps.scan.outputs.exit-code }}"
+        if [ "$scan_exit" = "2" ]; then
+          exit 0 # already failed the job via the Scan step itself
+        fi
+        if [ "${{ inputs.fail-on }}" = "any" ] && [ "$scan_exit" = "1" ]; then
+          echo "::error::VeriPatch found vulnerabilities and fail-on is 'any'." >&2
+          exit 1
+        fi
+        if [ "${{ inputs.fail-on }}" = "new" ]; then
+          if [ "$scan_exit" = "1" ]; then
+            echo "::error::VeriPatch found vulnerabilities new relative to baseline.json." >&2
+          fi
+          exit "$scan_exit"
+        fi
+        exit 0
