@@ -64,18 +64,10 @@ runs:
       env:
         SEVERITY: ${{ inputs.severity-threshold }}
       run: |
-        echo "DEBUG which veripatch: $(which veripatch || echo NOT_FOUND)"
-        veripatch --version || echo "DEBUG version check failed: $?"
-
         set +e
         veripatch scan --ci --json --severity "$SEVERITY" > veripatch-report.json 2> veripatch-stderr.txt
         scan_exit=$?
         set -e
-
-        echo "DEBUG scan_exit=$scan_exit"
-        echo "DEBUG stdout bytes: $(wc -c < veripatch-report.json)"
-        echo "DEBUG stderr contents:"
-        cat veripatch-stderr.txt
 
         echo "report-json=$(pwd)/veripatch-report.json" >> "$GITHUB_OUTPUT"
         echo "exit-code=$scan_exit" >> "$GITHUB_OUTPUT"
@@ -86,7 +78,8 @@ runs:
         fi
 
         if [ "$scan_exit" -eq 2 ]; then
-          echo "VeriPatch scan errored (exit 2) — see logs above." >&2
+          echo "VeriPatch scan errored (exit 2):" >&2
+          cat veripatch-stderr.txt >&2
           exit 2
         fi
 

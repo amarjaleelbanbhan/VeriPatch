@@ -1,4 +1,3 @@
-import { pathToFileURL } from 'node:url';
 import { Command } from 'commander';
 import { runCacheClearCommand, runCacheStatsCommand } from './commands/cache.js';
 import { runDoctorCommand } from './commands/doctor.js';
@@ -189,8 +188,12 @@ export async function main(argv: string[] = process.argv): Promise<void> {
   await buildProgram().parseAsync(argv);
 }
 
-const isMainModule =
-  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMainModule) {
-  await main();
-}
+// This file is bundled to dist/cli.js and is exclusively the package's `bin`
+// entrypoint (package.json) -- never imported as a library -- so it always
+// runs main() unconditionally. An earlier "only run if this is the main
+// module" guard compared import.meta.url (which resolves symlinks) against
+// process.argv[1] (the invoked path); npm's global installs symlink the bin
+// entry on Linux/macOS, so those two values diverge there and the guard
+// silently skipped main() entirely -- the CLI would exit 0 having done
+// nothing, on every Linux/macOS global install.
+await main();
