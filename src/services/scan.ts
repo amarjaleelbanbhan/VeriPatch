@@ -1,7 +1,7 @@
 import type { ScanOutput, ScannedVuln, Vuln } from '../core/models/index.js';
 import { matchVulnerabilities } from '../core/rules/match.js';
 import { resolveFix } from '../core/rules/fix-resolver.js';
-import { rankVulnerabilities } from '../core/rules/severity.js';
+import { rankVulnerabilities, summarizeVulns } from '../core/rules/severity.js';
 import type { AdvisorySource, LockfileParser } from '../core/ports.js';
 import type { Result } from '../shared/result.js';
 import { ok } from '../shared/result.js';
@@ -59,7 +59,7 @@ export async function runScan(
       stale,
     },
     vulns,
-    summary: summarize(vulns),
+    summary: summarizeVulns(vulns),
   });
 }
 
@@ -75,25 +75,4 @@ function toScannedVuln(vuln: Vuln): ScannedVuln {
     fix: resolveFix(vuln),
     verification: null,
   };
-}
-
-function summarize(vulns: ScannedVuln[]): ScanOutput['summary'] {
-  const summary = { critical: 0, high: 0, medium: 0, low: 0, verified: 0 };
-  for (const vuln of vulns) {
-    switch (vuln.severity.label) {
-      case 'CRITICAL':
-        summary.critical += 1;
-        break;
-      case 'HIGH':
-        summary.high += 1;
-        break;
-      case 'MEDIUM':
-        summary.medium += 1;
-        break;
-      case 'LOW':
-        summary.low += 1;
-        break;
-    }
-  }
-  return summary;
 }

@@ -1,4 +1,4 @@
-import type { SeverityLabel, Vuln } from '../models/index.js';
+import type { ScannedVuln, ScanSummary, SeverityLabel, Vuln } from '../models/index.js';
 
 /**
  * Severity ranking and filtering (blueprint §6 scan flags: --severity,
@@ -45,4 +45,27 @@ function compareVulns(a: Vuln, b: Vuln): number {
   const cvssDiff = b.advisory.severity.cvss - a.advisory.severity.cvss;
   if (cvssDiff !== 0) return cvssDiff;
   return a.advisory.id.localeCompare(b.advisory.id);
+}
+
+/** Shared severity/verified tally backing ScanOutput.summary — used by scan and report. */
+export function summarizeVulns(vulns: ScannedVuln[]): ScanSummary {
+  const summary = { critical: 0, high: 0, medium: 0, low: 0, verified: 0 };
+  for (const vuln of vulns) {
+    switch (vuln.severity.label) {
+      case 'CRITICAL':
+        summary.critical += 1;
+        break;
+      case 'HIGH':
+        summary.high += 1;
+        break;
+      case 'MEDIUM':
+        summary.medium += 1;
+        break;
+      case 'LOW':
+        summary.low += 1;
+        break;
+    }
+    if (vuln.verification !== null) summary.verified += 1;
+  }
+  return summary;
 }

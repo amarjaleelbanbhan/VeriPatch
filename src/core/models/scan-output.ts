@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { FixCandidateSchema } from './fix.js';
 import { SeveritySchema } from './advisory.js';
+import { VerificationResultSchema } from './verification.js';
 
 /**
  * Machine output (blueprint §5.2, schemaVersion 1). Fields are only ever
@@ -16,8 +17,8 @@ export const ScannedVulnSchema = z.object({
   dev: z.boolean(),
   paths: z.array(z.array(z.string())),
   fix: FixCandidateSchema,
-  /** Populated once `verify` has run for this vuln; null beforehand (M6). */
-  verification: z.null(),
+  /** Populated once `verify` has run for this vuln; null beforehand. */
+  verification: z.union([VerificationResultSchema, z.null()]),
 });
 export type ScannedVuln = z.infer<typeof ScannedVulnSchema>;
 
