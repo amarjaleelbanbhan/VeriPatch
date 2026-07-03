@@ -3,3 +3,5 @@ export * from './advisory.js';
 export * from './vuln.js';
 export * from './fix.js';
 export * from './verification.js';
+export * from './scan-output.js';
+export * from './baseline.js';
