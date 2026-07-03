@@ -114,7 +114,7 @@ src/
 ├── core/               pure: models/, rules/, confidence.ts, ports.ts
 ├── services/           orchestration: scan.ts, verify.ts, baseline.ts, report.ts
 ├── adapters/
-│   ├── lockfile/        package-lock.json v2/v3 → DepGraph, degraded mode
+│   ├── lockfile/        package-lock.json v2/v3 + yarn.lock (v1/berry) → DepGraph, detection, degraded mode
 │   ├── osv/             OSV.dev client, schema, cache-backed AdvisorySource
 │   ├── cache/           SQLite advisory cache + migrations
 │   ├── sandbox/         Docker lifecycle, network phases, pipeline steps

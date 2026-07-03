@@ -29,6 +29,10 @@ veripatch report GHSA-...     # re-render evidence without re-running anything
 
 `scan` and `report` work everywhere; `verify` requires a reachable Docker daemon.
 
+`scan` understands `package-lock.json` (v2/v3) and `yarn.lock` (classic and berry),
+auto-detected. `verify`/`update` currently replay fixes with npm, so they refuse yarn projects
+explicitly rather than corrupting them.
+
 ### As a GitHub Action
 
 ```yaml

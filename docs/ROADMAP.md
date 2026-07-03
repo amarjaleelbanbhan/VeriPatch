@@ -45,10 +45,18 @@ two things only the npm/GitHub account owner can set up:
 Once those are in place, merging the changesets bot's "Version Packages" PR triggers the actual
 publish automatically — no further manual steps.
 
-## Post-MVP (Phase 2+)
+## Phase 2 (v0.2.x)
 
-- yarn / pnpm lockfile adapters; npm workspaces & monorepos
-- Parallel verification with a job pool
+- [x] **M9 — yarn lockfile adapter**: classic (v1) strict-grammar parser + berry (v2+) YAML,
+      package.json-derived dev/direct reachability, CLI auto-detection with npm-precedence,
+      explicit verify/update refusal (the sandbox replays fixes with npm only for now).
+- [ ] **M10 — pnpm lockfile adapter**: pnpm-lock.yaml v6/v9 → DepGraph, same corpus discipline.
+- [ ] **M11 — npm workspaces / monorepos**: per-workspace attribution, scan/verify from the root.
+- [ ] **M12 — parallel verification**: bounded job pool, deterministic result ordering.
+- [ ] **M13 — baseline management UX + richer overrides strategies.**
+
+## Later phases
+
 - Reachability analysis (call-graph priority downgrade)
 - GitHub App (webhook verify queue, gVisor/Firecracker sandbox)
 - VS Code extension; AI-assisted explanations (AI explains, never decides)
