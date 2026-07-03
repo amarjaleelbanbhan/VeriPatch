@@ -46,10 +46,11 @@ Requires a reachable Docker daemon. Re-runs `scan` internally if `last-scan.json
 older than 24 hours. npm projects only for now — the sandbox replays fixes with npm, so yarn
 and pnpm projects get an explicit refusal (`scan` fully supports them; see the roadmap).
 
-| Flag                 | Description                                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `--all`              | Verify every feasible vulnerability from the last scan, serially, continuing past individual FAILs. |
-| `--severity <level>` | With `--all`, only verify vulns at/above this severity.                                             |
+| Flag                 | Description                                                                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--all`              | Verify every feasible vulnerability from the last scan, continuing past individual FAILs.                                                                                  |
+| `--severity <level>` | With `--all`, only verify vulns at/above this severity.                                                                                                                    |
+| `--concurrency <n>`  | Sandbox verifications to run in parallel (1–8, default from `verifyConcurrency` config). Output is buffered per candidate and printed in order, so it stays deterministic. |
 
 Prints a live per-step ticker (✅/❌/–) and, on completion, the confidence verdict. Persists run
 artifacts to `.veripatch/runs/<runId>/` (each step's log tail plus the full `VerificationResult`

@@ -55,7 +55,8 @@ publish automatically — no further manual steps.
 - [x] **M11 — npm workspaces / monorepos**: workspace members contribute edges and name
       provenance chains (never vulnerability nodes themselves); manifest-declared deps are
       direct; scan works from the monorepo root.
-- [ ] **M12 — parallel verification**: bounded job pool, deterministic result ordering.
+- [x] **M12 — parallel verification**: bounded job pool (`verifyConcurrency` /
+      `--concurrency`, max 8), per-candidate output buffered and flushed in input order.
 - [ ] **M13 — baseline management UX + richer overrides strategies.**
 
 ## Later phases

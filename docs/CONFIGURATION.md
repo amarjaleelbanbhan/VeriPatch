@@ -23,23 +23,25 @@ keys produce a warning and are ignored, not an error. An invalid value for a kno
   "testCommand": "npm test",
   "buildCommand": "npm run build",
   "verifyTimeoutMin": 10,
+  "verifyConcurrency": 1,
   "sandboxImage": "node:20-slim",
   "cacheTtlHours": 24,
   "reportDir": ".veripatch"
 }
 ```
 
-| Key                 | Type                                  | Default           | Meaning                                                                                          |
-| ------------------- | ------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------ |
-| `severityThreshold` | `"low"\|"medium"\|"high"\|"critical"` | `"low"`           | Minimum severity `scan` reports.                                                                 |
-| `ignore`            | `string[]`                            | `[]`              | Advisory ids or aliases to exclude — matched against a vuln's own id and every alias.            |
-| `includeDevDeps`    | `boolean`                             | `true`            | Whether devDependencies-only vulns are reported.                                                 |
-| `testCommand`       | `string`                              | `"npm test"`      | Run during `verify`'s test step (network-isolated). Empty string skips the step.                 |
-| `buildCommand`      | `string`                              | `"npm run build"` | Run during `verify`'s build step (network-isolated). Empty string skips the step.                |
-| `verifyTimeoutMin`  | `number`                              | `10`              | Per-step timeout budget during `verify`. A timeout marks that step (and the run) `INCONCLUSIVE`. |
-| `sandboxImage`      | `string`                              | `"node:20-slim"`  | Docker image the sandbox container runs.                                                         |
-| `cacheTtlHours`     | `number`                              | `24`              | How long a cached advisory is considered fresh before `scan` refetches it.                       |
-| `reportDir`         | `string`                              | `".veripatch"`    | Where `last-scan.json`, `baseline.json`, `report*.{json,md}`, and `runs/` are written.           |
+| Key                 | Type                                  | Default           | Meaning                                                                                                                                           |
+| ------------------- | ------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `severityThreshold` | `"low"\|"medium"\|"high"\|"critical"` | `"low"`           | Minimum severity `scan` reports.                                                                                                                  |
+| `ignore`            | `string[]`                            | `[]`              | Advisory ids or aliases to exclude — matched against a vuln's own id and every alias.                                                             |
+| `includeDevDeps`    | `boolean`                             | `true`            | Whether devDependencies-only vulns are reported.                                                                                                  |
+| `testCommand`       | `string`                              | `"npm test"`      | Run during `verify`'s test step (network-isolated). Empty string skips the step.                                                                  |
+| `buildCommand`      | `string`                              | `"npm run build"` | Run during `verify`'s build step (network-isolated). Empty string skips the step.                                                                 |
+| `verifyTimeoutMin`  | `number`                              | `10`              | Per-step timeout budget during `verify`. A timeout marks that step (and the run) `INCONCLUSIVE`.                                                  |
+| `verifyConcurrency` | `number`                              | `1`               | Sandbox verifications run in parallel with `verify --all` (1–8). Each is a full container + network; results and output order stay deterministic. |
+| `sandboxImage`      | `string`                              | `"node:20-slim"`  | Docker image the sandbox container runs.                                                                                                          |
+| `cacheTtlHours`     | `number`                              | `24`              | How long a cached advisory is considered fresh before `scan` refetches it.                                                                        |
+| `reportDir`         | `string`                              | `".veripatch"`    | Where `last-scan.json`, `baseline.json`, `report*.{json,md}`, and `runs/` are written.                                                            |
 
 ## Environment variables
 
