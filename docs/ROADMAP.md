@@ -23,8 +23,27 @@ train of small Conventional-Commit changes.
       cap-drop, network phases), pipeline steps, deterministic confidence, security e2e.
 - [x] **M7 — Reports + `update` + `doctor`**: JSON/MD/pr-comment evidence reports, safe
       fix apply with refusal rules, environment diagnostics, cache utilities.
-- [ ] **M8 — GitHub Action + docs + release**: composite action, full documentation set,
-      changesets + provenance publish, v0.1.0.
+- [x] **M8 — GitHub Action + docs + release**: composite action, full documentation set,
+      changesets + provenance publish pipeline, v0.1.0 cut. The actual first `npm publish` is
+      blocked on npm-side setup only this repo's owner can perform — see the note below.
+
+### Publishing v0.1.0 (owner action required)
+
+All MVP engineering is done and `release.yml` is ready to run, but the very first publish needs
+two things only the npm/GitHub account owner can set up:
+
+1. **npm trusted publishing (OIDC)** — on the `veripatch` package's npm settings, add this repo
+   (`amarjaleelbanbhan/VeriPatch`) and the `release.yml` workflow as a trusted publisher. This
+   is what lets `release.yml`'s `id-token: write` permission authenticate to npm without a
+   long-lived `NPM_TOKEN` secret.
+2. **First publish** — since npm requires the package name to not already exist for trusted
+   publishing to be configurable, the very first `npm publish` for a brand-new package name may
+   need to happen once manually (`npm publish --provenance` from a maintainer's authenticated
+   machine) before OIDC trust can be attached; after that, `release.yml` takes over for every
+   subsequent version.
+
+Once those are in place, merging the changesets bot's "Version Packages" PR triggers the actual
+publish automatically — no further manual steps.
 
 ## Post-MVP (Phase 2+)
 
