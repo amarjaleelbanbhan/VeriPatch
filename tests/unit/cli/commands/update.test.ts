@@ -125,6 +125,27 @@ describe('runUpdateCommand — refusal rules', () => {
     const code = runUpdateCommand({ ...baseFlags(), cwd, allowDirty: true });
     expect(code).toBe(0);
   }, 30_000);
+
+  it('override strategy writes an overrides entry instead of a root dependency', () => {
+    // a transitive vuln: left-pad is NOT a direct dependency here
+    fs.writeFileSync(
+      path.join(cwd, 'package.json'),
+      JSON.stringify({ name: 'fixture', version: '1.0.0' }),
+    );
+    writeScan({
+      fix: { ...writeScanDefaultFix(), strategy: 'override' },
+      verification: makeVerification('HIGH'),
+    });
+
+    const code = runUpdateCommand({ ...baseFlags(), cwd, allowDirty: true });
+    expect(code).toBe(0);
+    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>;
+      overrides?: Record<string, string>;
+    };
+    expect(pkg.overrides).toEqual({ 'left-pad': '1.3.0' });
+    expect(pkg.dependencies?.['left-pad']).toBeUndefined();
+  }, 30_000);
 });
 
 function writeScanDefaultFix() {

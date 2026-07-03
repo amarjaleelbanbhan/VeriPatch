@@ -1,4 +1,5 @@
 import { execFileSync, execSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { detectLockfile } from '../../adapters/lockfile/detect.js';
 import { loadMergedScan } from './shared.js';
@@ -121,8 +122,24 @@ export function runUpdateCommand(flags: UpdateCommandFlags): number {
   }
 
   try {
-    const spec = quoteArg(`${vuln.pkg}@${vuln.fix.to}`);
-    execSync(`npm install ${spec} --package-lock-only`, { cwd: flags.cwd, stdio: 'pipe' });
+    if (vuln.fix.strategy === 'override') {
+      // A transitive dependency is not the root's to install — plain
+      // `npm install pkg@to` would ADD it as a root dependency. Write the
+      // same overrides entry the sandbox verified, then regenerate the
+      // lockfile.
+      const manifestPath = path.join(flags.cwd, 'package.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+      const existingOverrides =
+        typeof manifest['overrides'] === 'object' && manifest['overrides'] !== null
+          ? (manifest['overrides'] as Record<string, unknown>)
+          : {};
+      manifest['overrides'] = { ...existingOverrides, [vuln.pkg]: vuln.fix.to };
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+      execSync('npm install --package-lock-only', { cwd: flags.cwd, stdio: 'pipe' });
+    } else {
+      const spec = quoteArg(`${vuln.pkg}@${vuln.fix.to}`);
+      execSync(`npm install ${spec} --package-lock-only`, { cwd: flags.cwd, stdio: 'pipe' });
+    }
   } catch (cause) {
     const failed = AppError.world(
       'UPDATE_APPLY_FAILED',
