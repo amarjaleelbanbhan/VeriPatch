@@ -37,6 +37,10 @@ export function buildProgram(): Command {
     .option('--dev', 'include devDependencies')
     .option('--no-dev', 'exclude devDependencies')
     .option('--severity <level>', 'minimum severity to report (low|medium|high|critical)')
+    .option(
+      '--write-baseline',
+      'accept every vulnerability found in this scan as pre-existing debt (writes baseline.json)',
+    )
     .action(async function (this: Command) {
       const globalOpts = this.parent?.opts<{
         json?: boolean;
@@ -48,6 +52,7 @@ export function buildProgram(): Command {
       const localOpts = this.opts<{
         ci?: boolean;
         severity?: string;
+        writeBaseline?: boolean;
       }>();
       const devSource = this.getOptionValueSource('dev');
 
@@ -60,6 +65,7 @@ export function buildProgram(): Command {
         ci: localOpts.ci ?? false,
         dev: devSource === 'cli' ? Boolean(this.opts<{ dev?: boolean }>().dev) : undefined,
         severity: isSeverityLevel(localOpts.severity) ? localOpts.severity : undefined,
+        writeBaseline: localOpts.writeBaseline ?? false,
       });
       process.exitCode = exitCode;
     });

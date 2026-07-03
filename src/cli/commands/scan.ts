@@ -5,7 +5,7 @@ import { NpmLockfileParser } from '../../adapters/lockfile/index.js';
 import { OsvClient } from '../../adapters/osv/client.js';
 import { OsvAdvisorySource } from '../../adapters/osv/index.js';
 import { BaselineSchema, type Baseline } from '../../core/models/index.js';
-import { diffAgainstBaseline } from '../../services/baseline.js';
+import { createBaseline, diffAgainstBaseline } from '../../services/baseline.js';
 import { runScan } from '../../services/scan.js';
 import { loadConfig, type Config } from '../../shared/config.js';
 import { createLogger } from '../../shared/logger.js';
@@ -26,6 +26,8 @@ export interface ScanCommandFlags {
   ci: boolean;
   dev: boolean | undefined;
   severity: Config['severityThreshold'] | undefined;
+  /** Accept every currently-found vuln as pre-existing debt (blueprint §7 baseline mode). */
+  writeBaseline: boolean;
 }
 
 const LAST_SCAN_FILE_NAME = 'last-scan.json';
@@ -85,6 +87,16 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
     const reportDir = path.resolve(flags.cwd, config.reportDir);
     fs.mkdirSync(reportDir, { recursive: true });
     fs.writeFileSync(path.join(reportDir, LAST_SCAN_FILE_NAME), JSON.stringify(output, null, 2));
+
+    if (flags.writeBaseline) {
+      fs.writeFileSync(
+        path.join(reportDir, BASELINE_FILE_NAME),
+        JSON.stringify(createBaseline(output.vulns), null, 2),
+      );
+      process.stdout.write(
+        `Wrote ${path.join(reportDir, BASELINE_FILE_NAME)} accepting ${String(output.vulns.length)} vulnerabilit${output.vulns.length === 1 ? 'y' : 'ies'} as pre-existing.\n`,
+      );
+    }
 
     const baseline = readBaseline(reportDir);
     const { newVulns } = diffAgainstBaseline(output.vulns, baseline);
