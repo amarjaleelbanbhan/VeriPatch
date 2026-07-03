@@ -20,7 +20,8 @@ export type DepNode = z.infer<typeof DepNodeSchema>;
 
 export const DepGraphSchema = z.object({
   nodes: z.array(DepNodeSchema),
-  lockfileVersion: z.union([z.literal(2), z.literal(3)]),
+  /** null only in degraded mode, where no lockfile exists. */
+  lockfileVersion: z.union([z.literal(2), z.literal(3), z.null()]),
   /** True when parsed from package.json ranges only (no lockfile) — verify is disabled. */
   degraded: z.boolean(),
 });
