@@ -1,4 +1,12 @@
-import type { Advisory, DepGraph, DepNode, FixCandidate, StepResult } from './models/index.js';
+import type {
+  Advisory,
+  DepGraph,
+  DepNode,
+  FixCandidate,
+  ScanOutput,
+  StepResult,
+  VerificationResult,
+} from './models/index.js';
 import type { Result } from '../shared/result.js';
 
 /**
@@ -48,4 +56,11 @@ export interface Sandbox {
   run(plan: SandboxPlan, onStep?: StepListener): Promise<Result<StepResult[]>>;
 }
 
-// Reporter port lands with M7 alongside its domain types.
+export interface ReportPaths {
+  jsonPath: string;
+  mdPath: string;
+}
+
+export interface Reporter {
+  write(results: ScanOutput | VerificationResult, dir: string): Result<ReportPaths>;
+}
