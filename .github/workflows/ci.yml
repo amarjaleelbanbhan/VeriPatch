@@ -32,6 +32,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:coverage
+      # Dogfooding (blueprint T8.1): VeriPatch scanning its own dependency
+      # tree, from source. Runs the CLI directly rather than via action.yml
+      # since the action installs from the published npm package, which
+      # doesn't exist until v0.1.0 ships — switch this to `uses: ./` once it
+      # does. Non-blocking for now: a live OSV.dev call in CI shouldn't gate
+      # unrelated PRs on a transient network blip while we build confidence.
+      - name: Dogfood — scan VeriPatch's own dependencies
+        if: matrix.os == 'ubuntu-latest'
+        continue-on-error: true
+        run: node dist/cli.js scan --no-color
 
   commitlint:
     name: conventional commits
@@ -44,7 +54,9 @@ jobs:
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: 20
-      - run: npx --yes commitlint@19 --extends @commitlint/config-conventional --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+          cache: npm
+      - run: npm ci
+      - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
 # Docker-backed security e2e (tests/e2e/security) self-skips when no daemon is
 # reachable, so no separate job is needed: it runs for real on ubuntu-latest
