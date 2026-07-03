@@ -1,7 +1,12 @@
 import { pathToFileURL } from 'node:url';
 import { Command } from 'commander';
+import { runCacheClearCommand, runCacheStatsCommand } from './commands/cache.js';
+import { runDoctorCommand } from './commands/doctor.js';
+import { runReportCommand } from './commands/report.js';
 import { runScanCommand } from './commands/scan.js';
+import { runUpdateCommand } from './commands/update.js';
 import { runVerifyCommand } from './commands/verify.js';
+import { loadConfig } from '../shared/config.js';
 import { VERIPATCH_VERSION } from '../shared/version.js';
 
 /**
@@ -88,7 +93,84 @@ export function buildProgram(): Command {
       process.exitCode = exitCode;
     });
 
+  program
+    .command('report [vulnId]')
+    .description('Re-render an evidence report from stored run artifacts.')
+    .option('--format <format>', 'md|json|pr-comment', 'md')
+    .action(function (this: Command, vulnId: string | undefined) {
+      const globalOpts = this.parent?.opts<{ config?: string; cwd: string }>();
+      const localOpts = this.opts<{ format?: string }>();
+
+      const exitCode = runReportCommand({
+        cwd: globalOpts?.cwd ?? process.cwd(),
+        configPath: globalOpts?.config,
+        vulnId,
+        format: isReportFormat(localOpts.format) ? localOpts.format : 'md',
+      });
+      process.exitCode = exitCode;
+    });
+
+  program
+    .command('update <vulnId>')
+    .description('Apply a verified fix to the working tree.')
+    .option('--force', 'apply even without a HIGH/MEDIUM verification confidence')
+    .option('--allow-dirty', 'apply even with uncommitted changes in the working tree')
+    .action(function (this: Command, vulnId: string) {
+      const globalOpts = this.parent?.opts<{ config?: string; cwd: string }>();
+      const localOpts = this.opts<{ force?: boolean; allowDirty?: boolean }>();
+
+      const exitCode = runUpdateCommand({
+        cwd: globalOpts?.cwd ?? process.cwd(),
+        configPath: globalOpts?.config,
+        vulnId,
+        force: localOpts.force ?? false,
+        allowDirty: localOpts.allowDirty ?? false,
+      });
+      process.exitCode = exitCode;
+    });
+
+  program
+    .command('doctor')
+    .description('Diagnose the environment VeriPatch depends on.')
+    .action(async function (this: Command) {
+      const globalOpts = this.parent?.opts<{ config?: string; cwd: string }>();
+      const cwd = globalOpts?.cwd ?? process.cwd();
+      const configResult = loadConfig({
+        cwd,
+        ...(globalOpts?.config !== undefined ? { configPath: globalOpts.config } : {}),
+        env: process.env,
+      });
+      const sandboxImage = configResult.ok
+        ? configResult.value.config.sandboxImage
+        : 'node:20-slim';
+
+      const exitCode = await runDoctorCommand({
+        cwd,
+        configPath: globalOpts?.config,
+        sandboxImage,
+      });
+      process.exitCode = exitCode;
+    });
+
+  const cacheCommand = program.command('cache').description('Manage the local advisory cache.');
+  cacheCommand
+    .command('clear')
+    .description('Delete all cached advisory data.')
+    .action(() => {
+      process.exitCode = runCacheClearCommand();
+    });
+  cacheCommand
+    .command('stats')
+    .description('Show cache row counts, size, and staleness.')
+    .action(() => {
+      process.exitCode = runCacheStatsCommand();
+    });
+
   return program;
+}
+
+function isReportFormat(value: string | undefined): value is 'md' | 'json' | 'pr-comment' {
+  return value === 'md' || value === 'json' || value === 'pr-comment';
 }
 
 function isSeverityLevel(
