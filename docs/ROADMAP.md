@@ -17,7 +17,7 @@ train of small Conventional-Commit changes.
 - [x] **M4 — Rule engine**: semver vulnerability matching (edge-case table), severity
       ranking + filters, deterministic fix resolution (direct/override/parent-bump),
       same-package invariant.
-- [ ] **M5 — `scan` command**: ScanService, ranked table renderer, `--json`, exit-code
+- [x] **M5 — `scan` command**: ScanService, ranked table renderer, `--json`, exit-code
       mapper, `last-scan.json`, `--ci` baseline diff, perf budget (<15s warm on 1,500 deps).
 - [ ] **M6 — Sandbox + `verify`**: staging copy, hardened Docker runtime (non-root,
       cap-drop, network phases), pipeline steps, deterministic confidence, security e2e.
