@@ -18,6 +18,10 @@ inputs:
     description: 'Run `veripatch verify --all` after scanning. Requires Docker and adds several minutes.'
     required: false
     default: 'false'
+  verify-severity-threshold:
+    description: 'Minimum severity to verify when verify is true (low|medium|high|critical). Defaults to critical since verify is slower and consumes more CI time than scan alone.'
+    required: false
+    default: 'critical'
   working-directory:
     description: 'Directory containing the project to scan.'
     required: false
@@ -96,7 +100,7 @@ runs:
       if: inputs.verify == 'true'
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: veripatch verify --all --severity critical
+      run: veripatch verify --all --severity "${{ inputs.verify-severity-threshold }}"
 
     - name: Upload verification run artifacts
       if: inputs.verify == 'true'
