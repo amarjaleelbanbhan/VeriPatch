@@ -88,6 +88,20 @@ pulled, lockfile presence, OSV.dev reachability, advisory-cache writability, con
 Each check is independent — one failure doesn't block the rest from reporting. Exit `1` if any
 check fails (the one command where a non-zero exit isn't reserved for "vulnerabilities found").
 
+## `veripatch baseline list|add|remove|prune`
+
+Manages accepted pre-existing debt (`.veripatch/baseline.json`) one finding at a time —
+`scan --write-baseline` remains the all-at-once form.
+
+| Subcommand        | Description                                                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`            | Every baselined vuln with its reason, added date, and expiry (`[EXPIRED]` when lapsed).                                                                           |
+| `add <vulnId>`    | Accept one finding from the last scan as debt. `--reason <text>` records why; `--expires-days <n>` makes the acceptance lapse, after which the vuln is new again. |
+| `remove <vulnId>` | Stop accepting a vuln as debt (removes every package entry for that advisory).                                                                                    |
+| `prune`           | Drop entries whose vulns no longer appear in the last scan — debt that's been paid off.                                                                           |
+
+Entries always come from real findings in `last-scan.json`, never from arbitrary ids.
+
 ## `veripatch cache clear|stats`
 
 `clear` empties the local advisory cache (`~/.veripatch/cache.db`). `stats` prints row counts,

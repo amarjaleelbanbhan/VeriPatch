@@ -57,7 +57,11 @@ publish automatically — no further manual steps.
       direct; scan works from the monorepo root.
 - [x] **M12 — parallel verification**: bounded job pool (`verifyConcurrency` /
       `--concurrency`, max 8), per-candidate output buffered and flushed in input order.
-- [ ] **M13 — baseline management UX + richer overrides strategies.**
+- [x] **M13 — baseline management UX**: `baseline list|add|remove|prune` with per-entry
+      reasons and expiry (an expired acceptance counts as new again in `--ci`).
+- [ ] **M14 — richer overrides strategies**: verify-time parent-bump fallback when an
+      override would violate the parent's engines/peer constraints (deferred from M13 — it
+      needs live-tree analysis during verification, not a rule-engine change).
 
 ## Later phases
 
