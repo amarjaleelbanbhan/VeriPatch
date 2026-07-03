@@ -50,7 +50,8 @@ publish automatically — no further manual steps.
 - [x] **M9 — yarn lockfile adapter**: classic (v1) strict-grammar parser + berry (v2+) YAML,
       package.json-derived dev/direct reachability, CLI auto-detection with npm-precedence,
       explicit verify/update refusal (the sandbox replays fixes with npm only for now).
-- [ ] **M10 — pnpm lockfile adapter**: pnpm-lock.yaml v6/v9 → DepGraph, same corpus discipline.
+- [x] **M10 — pnpm lockfile adapter**: pnpm-lock.yaml v6/v9 → DepGraph via the shared
+      flat-graph builder, peer-suffix merging, three-way CLI detection, same corpus discipline.
 - [ ] **M11 — npm workspaces / monorepos**: per-workspace attribution, scan/verify from the root.
 - [ ] **M12 — parallel verification**: bounded job pool, deterministic result ordering.
 - [ ] **M13 — baseline management UX + richer overrides strategies.**

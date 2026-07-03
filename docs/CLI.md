@@ -25,9 +25,9 @@ A single mapper (`src/cli/exit-code.ts`) decides every exit code:
 Parses the lockfile, fetches advisories, ranks vulnerabilities, resolves a deterministic fix
 per vuln, and writes `.veripatch/last-scan.json`.
 
-Supported lockfiles: `package-lock.json` (v2/v3) and `yarn.lock` (classic v1 and berry),
-auto-detected. When both are present, `package-lock.json` wins and a warning names the ignored
-file.
+Supported lockfiles: `package-lock.json` (v2/v3), `yarn.lock` (classic v1 and berry), and
+`pnpm-lock.yaml` (v6/v9), auto-detected. When several are present, precedence is npm → yarn →
+pnpm and a warning names each ignored file.
 
 | Flag                 | Description                                                                                                                                                                                        |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,7 +44,7 @@ refuses to run (there's no exact resolved tree to reproduce).
 
 Requires a reachable Docker daemon. Re-runs `scan` internally if `last-scan.json` is missing or
 older than 24 hours. npm projects only for now — the sandbox replays fixes with npm, so yarn
-projects get an explicit refusal (`scan` fully supports them; see the roadmap).
+and pnpm projects get an explicit refusal (`scan` fully supports them; see the roadmap).
 
 | Flag                 | Description                                                                                         |
 | -------------------- | --------------------------------------------------------------------------------------------------- |
