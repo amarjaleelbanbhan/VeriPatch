@@ -1,6 +1,7 @@
 import { AppError } from '../../shared/errors.js';
 import { err, ok, type Result } from '../../shared/result.js';
 import { DepNodeSchema, type DepNode } from '../../core/models/index.js';
+import { MAX_PATHS_PER_NODE, ROOT_LABEL, collectPaths, dedupePaths } from './paths.js';
 import type { RawLockfile, RawPackageEntry } from './schema.js';
 
 /**
@@ -16,9 +17,6 @@ import type { RawLockfile, RawPackageEntry } from './schema.js';
  */
 
 const NODE_MODULES_SEG = 'node_modules/';
-/** Enough chains to explain "how did this get here" without combinatorial blowup. */
-const MAX_PATHS_PER_NODE = 8;
-const ROOT_LABEL = 'root';
 
 interface LocationEntry {
   location: string;
@@ -70,7 +68,10 @@ export function walkPackages(lock: RawLockfile): Result<DepNode[]> {
     edges.set(location, targets);
   }
 
-  const pathsByLocation = collectPaths(byLocation, edges);
+  const namesByLocation = new Map(
+    [...byLocation.values()].map(({ location, name }) => [location, name]),
+  );
+  const pathsByLocation = collectPaths(namesByLocation, edges);
   const directLocations = new Set(rootEdge);
 
   // Merge instances of the same name@version installed at multiple locations.
@@ -163,47 +164,4 @@ function parentLocation(location: string): string {
   const idx = location.lastIndexOf(NODE_MODULES_SEG);
   if (idx <= 0) return '';
   return location.slice(0, idx - 1); // drop trailing "/node_modules/<name>"
-}
-
-/** BFS from the root, collecting up to MAX_PATHS_PER_NODE name-chains per location. */
-function collectPaths(
-  byLocation: ReadonlyMap<string, LocationEntry>,
-  edges: ReadonlyMap<string, string[]>,
-): Map<string, string[][]> {
-  const paths = new Map<string, string[][]>();
-  interface QueueItem {
-    location: string;
-    chain: string[];
-    visited: Set<string>;
-  }
-  const queue: QueueItem[] = [{ location: '', chain: [ROOT_LABEL], visited: new Set(['']) }];
-
-  let item: QueueItem | undefined;
-  while ((item = queue.shift()) !== undefined) {
-    for (const next of edges.get(item.location) ?? []) {
-      if (item.visited.has(next)) continue; // cycle guard
-      const nextEntry = byLocation.get(next);
-      if (nextEntry === undefined) continue;
-      const existing = paths.get(next) ?? [];
-      if (existing.length >= MAX_PATHS_PER_NODE) continue; // saturated — stop expanding through it
-      const chain = [...item.chain, nextEntry.name];
-      existing.push(chain);
-      paths.set(next, existing);
-      queue.push({ location: next, chain, visited: new Set([...item.visited, next]) });
-    }
-  }
-  return paths;
-}
-
-function dedupePaths(paths: string[][]): string[][] {
-  const seen = new Set<string>();
-  const out: string[][] = [];
-  for (const p of paths) {
-    const key = p.join('\u0000');
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push(p);
-    }
-  }
-  return out;
 }
