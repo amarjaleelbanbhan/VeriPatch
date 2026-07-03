@@ -1,0 +1,11 @@
+{
+  "name": "degraded-fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "a": "^1.2.0",
+    "from-git": "git+https://github.com/example/from-git.git"
+  },
+  "devDependencies": {
+    "d": "~2.0.0"
+  }
+}
