@@ -43,9 +43,13 @@
   "engines": {
     "node": ">=20"
   },
+  "overrides": {
+    "esbuild": "^0.28.1"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.0",
+    "@types/semver": "^7.7.1",
     "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
@@ -59,6 +63,7 @@
   },
   "dependencies": {
     "pino": "^10.3.1",
+    "semver": "^7.8.5",
     "zod": "^4.4.3"
   }
 }
