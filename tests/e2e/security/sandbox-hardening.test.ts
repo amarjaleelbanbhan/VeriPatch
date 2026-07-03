@@ -125,6 +125,8 @@ describe.skipIf(!(await dockerReachable()))('sandbox hardening (real Docker)', (
     });
 
     if (!result.ok) throw result.error;
+    // eslint-disable-next-line no-console -- temporary diagnostic for a CI-only failure
+    console.error('STEP RESULTS:', JSON.stringify(result.value, null, 2));
     const install = result.value.find((s) => s.step === 'install');
     expect(install?.status).toBe('pass');
 
