@@ -19,7 +19,7 @@ train of small Conventional-Commit changes.
       same-package invariant.
 - [x] **M5 — `scan` command**: ScanService, ranked table renderer, `--json`, exit-code
       mapper, `last-scan.json`, `--ci` baseline diff, perf budget (<15s warm on 1,500 deps).
-- [ ] **M6 — Sandbox + `verify`**: staging copy, hardened Docker runtime (non-root,
+- [x] **M6 — Sandbox + `verify`**: staging copy, hardened Docker runtime (non-root,
       cap-drop, network phases), pipeline steps, deterministic confidence, security e2e.
 - [ ] **M7 — Reports + `update` + `doctor`**: JSON/MD/pr-comment evidence reports, safe
       fix apply with refusal rules, environment diagnostics, cache utilities.
