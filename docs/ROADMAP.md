@@ -14,7 +14,7 @@ train of small Conventional-Commit changes.
       walkers, degraded mode (no lockfile), hostile-input corpus, contract tests.
 - [x] **M3 — Advisory client + cache**: OSV querybatch client (chunking, retry/backoff),
       detail hydration, SQLite cache with TTL + offline stale-serve, sanitizer.
-- [ ] **M4 — Rule engine**: semver vulnerability matching (edge-case table), severity
+- [x] **M4 — Rule engine**: semver vulnerability matching (edge-case table), severity
       ranking + filters, deterministic fix resolution (direct/override/parent-bump),
       same-package invariant.
 - [ ] **M5 — `scan` command**: ScanService, ranked table renderer, `--json`, exit-code
