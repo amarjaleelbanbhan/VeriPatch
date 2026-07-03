@@ -1,0 +1,118 @@
+name: 'VeriPatch'
+description: 'Verified remediation for npm vulnerabilities — scan, and optionally verify fixes in a hardened sandbox.'
+author: 'VeriPatch'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  severity-threshold:
+    description: 'Minimum severity to report (low|medium|high|critical).'
+    required: false
+    default: 'high'
+  fail-on:
+    description: 'Which vulnerabilities fail the build: "new" (vs .veripatch/baseline.json) or "any".'
+    required: false
+    default: 'new'
+  verify:
+    description: 'Run `veripatch verify --all` after scanning. Requires Docker and adds several minutes.'
+    required: false
+    default: 'false'
+  working-directory:
+    description: 'Directory containing the project to scan.'
+    required: false
+    default: '.'
+  version:
+    description: 'VeriPatch version to install.'
+    required: false
+    default: 'latest'
+
+outputs:
+  report-json:
+    description: 'Path to the generated report.json.'
+    value: ${{ steps.scan.outputs.report-json }}
+  vulnerabilities-found:
+    description: '"true" if the scan found any vulnerability at or above severity-threshold.'
+    value: ${{ steps.scan.outputs.vulnerabilities-found }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      with:
+        node-version: 20
+
+    - name: Install VeriPatch
+      shell: bash
+      run: npm install --global "veripatch@${{ inputs.version }}"
+
+    - name: Scan
+      id: scan
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SEVERITY: ${{ inputs.severity-threshold }}
+      run: |
+        set +e
+        veripatch scan --ci --json --severity "$SEVERITY" > veripatch-report.json
+        scan_exit=$?
+        set -e
+
+        echo "report-json=$(pwd)/veripatch-report.json" >> "$GITHUB_OUTPUT"
+        if [ "$scan_exit" -eq 1 ]; then
+          echo "vulnerabilities-found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "vulnerabilities-found=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        node -e '
+          const report = require("./veripatch-report.json");
+          for (const vuln of report.vulns) {
+            const fix = vuln.fix.feasible ? `${vuln.fix.to} (${vuln.fix.bumpType})` : "no fix available";
+            console.log(`::warning file=package.json::${vuln.id} in ${vuln.pkg}@${vuln.installed} (${vuln.severity.label}) — fix: ${fix}`);
+          }
+        '
+
+        if [ "$scan_exit" -eq 2 ]; then
+          echo "VeriPatch scan errored (exit 2) — see logs above." >&2
+          exit 2
+        fi
+        if [ "${{ inputs.fail-on }}" = "any" ] && [ "$scan_exit" -eq 1 ]; then
+          exit 1
+        fi
+        if [ "${{ inputs.fail-on }}" = "new" ]; then
+          exit "$scan_exit"
+        fi
+        exit 0
+
+    - name: Upload scan report
+      uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+      with:
+        name: veripatch-report
+        path: ${{ inputs.working-directory }}/veripatch-report.json
+
+    - name: Verify
+      if: inputs.verify == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: veripatch verify --all --severity critical
+
+    - name: Upload verification run artifacts
+      if: inputs.verify == 'true'
+      uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+      with:
+        name: veripatch-runs
+        path: ${{ inputs.working-directory }}/.veripatch/runs
+
+    - name: Post sticky PR comment
+      if: inputs.verify == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: veripatch report --format pr-comment > pr-comment.md
+
+    - name: Update PR comment
+      if: inputs.verify == 'true' && github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@331f8f5b4215f0445d3c07b4967662a32a2d3e31 # v2.9.0
+      with:
+        path: ${{ inputs.working-directory }}/pr-comment.md
