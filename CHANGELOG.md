@@ -1,5 +1,42 @@
 # veripatch
 
+## 0.2.0
+
+### Minor Changes
+
+- [`140144c`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/140144c4d978909913e0eaa5dc27ed1f16e7f79f) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - New `veripatch baseline list|add|remove|prune` subcommands manage accepted debt one finding at
+  a time: `add` records a reason and an optional expiry (`--expires-days`), after which the vuln
+  counts as new again in `scan --ci`; `prune` drops entries whose vulns no longer appear in the
+  last scan. `baseline.json` gains optional per-entry metadata, additively — existing files keep
+  working unchanged.
+
+- [`281d079`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/281d07973609a0566467ef8015d4cd854a9d8ec7) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - npm workspaces are now scanned correctly from the monorepo root: workspace members'
+  dependencies (including cross-workspace references through link entries) appear in the graph
+  with provenance chains that name the owning workspace, e.g. `root > @ws/lib > vulnerable-dep`.
+  Workspace members themselves are never reported as vulnerabilities — they are first-party code.
+
+- [`6f297e4`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/6f297e4bc34d8c8d46057149e17668f3d1065414) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - Transitive-dependency fixes are now applied the way a human would commit them: both the verify
+  sandbox and `veripatch update` write an npm `overrides` entry and regenerate the lockfile,
+  instead of running `npm install pkg@to` — which would have added the package as a new root
+  dependency. Direct dependencies keep the plain versioned install.
+
+- [`10feb88`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/10feb88858f4da639c0625f8876a0061705a8163) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - `verify --all` can run sandbox verifications in parallel: new `verifyConcurrency` config key
+  (default 1, max 8) and `--concurrency` flag. Each verification keeps its own container,
+  network, and staging copy; per-candidate output is buffered and printed in input order, so the
+  transcript stays deterministic regardless of which sandbox finishes first.
+
+- [`6872cbf`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/6872cbf4d0c5e9f153eb9929ad033af933e7081d) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - `scan` now supports pnpm projects: `pnpm-lock.yaml` v6 (pnpm 8) and v9 (pnpm 9+) are parsed
+  into the same dependency graph as npm and yarn lockfiles, with peer-resolution suffixes merged
+  into one node per package version. Lockfile auto-detection covers all three managers (npm →
+  yarn → pnpm precedence, with a warning naming any ignored lockfile). `verify` and `update`
+  refuse pnpm projects explicitly for now, matching the yarn behavior.
+
+- [`c78b9cb`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/c78b9cbf9aeaa8ca9a7910d671b8c2916d935880) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - `scan` now supports yarn projects: both classic (v1) and berry (v2+) `yarn.lock` files are
+  parsed into the same dependency graph as npm lockfiles, with auto-detection when multiple
+  lockfiles coexist (`package-lock.json` wins, with a warning). Reports gain a `packageManager`
+  field. `verify` and `update` refuse yarn projects explicitly for now — they replay fixes with
+  npm, and silently writing a `package-lock.json` into a yarn project would corrupt it.
+
 ## 0.1.1
 
 ### Patch Changes
