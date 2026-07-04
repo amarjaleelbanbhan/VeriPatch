@@ -26,18 +26,31 @@ export interface ScanRequest {
   includeDevDeps: boolean;
 }
 
+/**
+ * Real phase boundaries in the pipeline below — not a fabricated progress
+ * bar. A caller (the CLI's spinner) gets to say "Parsing lockfile…" and
+ * "Fetching advisories…" because those are genuinely the two slow steps,
+ * not because the UI made up intermediate percentages.
+ */
+export type ScanPhase = 'lockfile' | 'advisories' | 'match';
+export type ScanPhaseListener = (phase: ScanPhase) => void;
+
 export async function runScan(
   deps: ScanServiceDeps,
   request: ScanRequest,
+  onPhase?: ScanPhaseListener,
 ): Promise<Result<ScanOutput>> {
+  onPhase?.('lockfile');
   const graphResult = deps.parser.parse(request.projectDir);
   if (!graphResult.ok) return graphResult;
   const graph = graphResult.value;
 
+  onPhase?.('advisories');
   const advisoryResult = await deps.advisorySource.getAdvisories(graph.nodes);
   if (!advisoryResult.ok) return advisoryResult;
   const { advisories, stale, dataErrors } = advisoryResult.value;
 
+  onPhase?.('match');
   const allVulns = matchVulnerabilities(graph.nodes, advisories);
   const ranked = rankVulnerabilities(allVulns, {
     severityThreshold: request.severityThreshold,

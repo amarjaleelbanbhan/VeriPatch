@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadMergedScan } from '../../../../src/cli/commands/shared.js';
+import { loadMergedScan, mergeLatestVerifications } from '../../../../src/cli/commands/shared.js';
 import type { ScanOutput, VerificationResult } from '../../../../src/core/models/index.js';
 
 let reportDir: string;
@@ -15,8 +15,8 @@ afterEach(() => {
   fs.rmSync(reportDir, { recursive: true, force: true });
 });
 
-function writeScan(overrides: Partial<ScanOutput> = {}): void {
-  const scan: ScanOutput = {
+function buildScan(overrides: Partial<ScanOutput> = {}): ScanOutput {
+  return {
     schemaVersion: 1,
     tool: { name: 'VeriPatch', version: '0.0.0' },
     generatedAt: '2026-01-01T00:00:00.000Z',
@@ -52,7 +52,10 @@ function writeScan(overrides: Partial<ScanOutput> = {}): void {
     summary: { critical: 0, high: 1, medium: 0, low: 0, verified: 0 },
     ...overrides,
   };
-  fs.writeFileSync(path.join(reportDir, 'last-scan.json'), JSON.stringify(scan));
+}
+
+function writeScan(overrides: Partial<ScanOutput> = {}): void {
+  fs.writeFileSync(path.join(reportDir, 'last-scan.json'), JSON.stringify(buildScan(overrides)));
 }
 
 function writeRun(
@@ -129,5 +132,19 @@ describe('loadMergedScan', () => {
     const r = loadMergedScan(reportDir);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe('SCAN_FILE_MALFORMED');
+  });
+});
+
+describe('mergeLatestVerifications', () => {
+  it('merges runs into a scan passed directly, not read from a file — this is what scan.ts calls on its freshly computed output', () => {
+    writeRun('run-1', '2026-01-02T00:00:00.000Z', 'HIGH');
+    const merged = mergeLatestVerifications(buildScan(), reportDir);
+    expect(merged.vulns[0]?.verification?.confidence).toBe('HIGH');
+    expect(merged.summary.verified).toBe(1);
+  });
+
+  it('is a no-op when there are no runs yet', () => {
+    const scan = buildScan();
+    expect(mergeLatestVerifications(scan, reportDir)).toEqual(scan);
   });
 });

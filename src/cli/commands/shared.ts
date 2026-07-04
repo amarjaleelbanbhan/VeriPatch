@@ -45,11 +45,21 @@ export function loadMergedScan(reportDir: string): Result<ScanOutput> {
     );
   }
 
-  let scan = scanResult.data;
+  return ok(mergeLatestVerifications(scanResult.data, reportDir));
+}
+
+/**
+ * Merges the most recent verification per vuln from .veripatch/runs/*\/result.json
+ * into a scan — shared by `report`, `update`, and `scan` itself, since a
+ * fresh `scan` should still show "✓ verified" for a vuln you already ran
+ * `veripatch verify` on, not blank it out just because this is a new run.
+ */
+export function mergeLatestVerifications(scan: ScanOutput, reportDir: string): ScanOutput {
+  let merged = scan;
   for (const verification of readAllVerifications(reportDir)) {
-    scan = mergeVerification(scan, verification);
+    merged = mergeVerification(merged, verification);
   }
-  return ok(scan);
+  return merged;
 }
 
 function readAllVerifications(reportDir: string) {

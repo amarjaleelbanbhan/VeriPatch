@@ -13,9 +13,18 @@ import { runScan } from '../../services/scan.js';
 import { verifyCandidate } from '../../services/verify.js';
 import { loadConfig, type Config } from '../../shared/config.js';
 import { AppError } from '../../shared/errors.js';
-import { mapWithConcurrency } from '../../shared/pool.js';
 import { createLogger } from '../../shared/logger.js';
+import { mapWithConcurrency } from '../../shared/pool.js';
 import { errorExitCode } from '../exit-code.js';
+import {
+  createPaint,
+  explainStep,
+  getSymbols,
+  resolveColor,
+  resolveUiOptions,
+  type Paint,
+  type SymbolSet,
+} from '../ui/index.js';
 
 /**
  * Composition root for `veripatch verify` (blueprint §6). Ensures a fresh
@@ -46,7 +55,12 @@ const SEVERITY_ORDER: Record<ScannedVuln['severity']['label'], number> = {
 };
 
 export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<number> {
-  const logger = createLogger({ verbose: flags.verbose });
+  const ui = resolveUiOptions(resolveColor(flags.color));
+  const paint = createPaint(ui.color);
+  const sym = getSymbols(ui.unicode);
+  const printError = (message: string): void => {
+    process.stderr.write(`${paint(sym.fail, 'danger')} ${message}\n`);
+  };
 
   const configResult = loadConfig({
     cwd: flags.cwd,
@@ -57,13 +71,13 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
     },
   });
   if (!configResult.ok) {
-    logger.error({ code: configResult.error.code }, configResult.error.message);
+    printError(configResult.error.message);
     return errorExitCode(configResult.error);
   }
   const { config } = configResult.value;
 
   if (!flags.all && flags.vulnId === undefined) {
-    logger.error('Specify a vulnerability id or pass --all.');
+    printError('Specify a vulnerability id or pass --all.');
     return 2;
   }
 
@@ -77,13 +91,13 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
       'Run `veripatch doctor` to diagnose, or start Docker Desktop / the docker service.',
       cause,
     );
-    logger.error({ code: dockerError.code }, dockerError.message);
+    printError(dockerError.message);
     return errorExitCode(dockerError);
   }
 
   const cacheResult = AdvisoryCache.open(DEFAULT_CACHE_DIR);
   if (!cacheResult.ok) {
-    logger.error({ code: cacheResult.error.code }, cacheResult.error.message);
+    printError(cacheResult.error.message);
     return errorExitCode(cacheResult.error);
   }
   const cache = cacheResult.value;
@@ -96,7 +110,7 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
         `This project uses ${detected.packageManager} — the verify sandbox currently replays fixes with npm only.`,
         `\`veripatch scan\` fully supports ${detected.packageManager}; sandbox verification for it is on the roadmap.`,
       );
-      logger.error({ code: unsupported.code }, unsupported.message);
+      printError(unsupported.message);
       return errorExitCode(unsupported);
     }
     const parser = detected.parser;
@@ -104,12 +118,12 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
       client: new OsvClient(),
       cache,
       cacheTtlHours: config.cacheTtlHours,
-      logger,
+      logger: createLogger({ verbose: flags.verbose }),
     });
 
     const scanResult = await ensureFreshScan(flags.cwd, config, parser, advisorySource);
     if (!scanResult.ok) {
-      logger.error({ code: scanResult.error.code }, scanResult.error.message);
+      printError(scanResult.error.message);
       return errorExitCode(scanResult.error);
     }
     const output = scanResult.value;
@@ -120,13 +134,13 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
         'No lockfile was found — verification requires an exact resolved tree.',
         'Run `npm install` to generate package-lock.json, then re-run scan.',
       );
-      logger.error({ code: degradedError.code }, degradedError.message);
+      printError(degradedError.message);
       return errorExitCode(degradedError);
     }
 
     const candidates = selectCandidates(output, flags);
     if (candidates.length === 0) {
-      logger.error('No matching, feasible vulnerability found in the last scan.');
+      printError('No matching, feasible vulnerability found in the last scan.');
       return 2;
     }
 
@@ -155,7 +169,7 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
         if (live) process.stdout.write(line);
         else buffers[index]?.push(line);
       };
-      out(`\n${vuln.id} (${vuln.pkg} ${vuln.fix.from} -> ${vuln.fix.to})\n`);
+      out(`\n${paint.bold(vuln.id)}  ${vuln.pkg} ${vuln.fix.from} ${sym.arrow} ${vuln.fix.to}\n`);
       const result = await verifyCandidate(
         sandbox,
         {
@@ -169,17 +183,22 @@ export async function runVerifyCommand(flags: VerifyCommandFlags): Promise<numbe
           },
         },
         (step) => {
-          const icon = step.status === 'pass' ? '✅' : step.status === 'skipped' ? '–' : '❌';
+          const icon =
+            step.status === 'pass'
+              ? paint(sym.pass, 'success')
+              : step.status === 'skipped'
+                ? paint.dim(sym.pending)
+                : paint(sym.fail, 'danger');
           out(`  ${icon} ${step.step}\n`);
         },
       );
 
       if (!result.ok) {
-        logger.error({ code: result.error.code }, result.error.message);
+        printError(result.error.message);
         overallExit = errorExitCode(result.error);
       } else {
         persistRunArtifacts(reportDir, result.value);
-        out(`  verdict: ${result.value.confidence}\n`);
+        out(renderVerdict(result.value, { paint, sym }));
       }
       completed[index] = true;
       if (!live) flushInOrder();
@@ -248,6 +267,37 @@ function selectCandidates(output: ScanOutput, flags: VerifyCommandFlags): Scanne
   const thresholdRank =
     flags.severity !== undefined ? severityRankOf(flags.severity) : SEVERITY_ORDER.LOW;
   return feasible.filter((v) => SEVERITY_ORDER[v.severity.label] >= thresholdRank);
+}
+
+/**
+ * Explains the verdict rather than just naming it — every word here comes
+ * from this specific result's own steps, never a canned message. HIGH/MEDIUM
+ * get the plain-language confirmations a reviewer actually wants ("upgrade
+ * verified", "tests passed"); anything else names the real failing step so
+ * "requires manual review" isn't a dead end.
+ */
+function renderVerdict(result: VerificationResult, deps: { paint: Paint; sym: SymbolSet }): string {
+  const { paint, sym } = deps;
+  const ok = result.confidence === 'HIGH' || result.confidence === 'MEDIUM';
+  const badge = ok
+    ? paint(`${sym.pass} verdict: ${result.confidence}`, 'success')
+    : paint(`${sym.warn} verdict: ${result.confidence}`, 'warning');
+  const lines = [`  ${badge}\n`];
+
+  if (ok) {
+    const explanations = result.steps
+      .filter((s) => s.status === 'pass' && ['rescan', 'build', 'test'].includes(s.step))
+      .map((s) => `${paint(sym.pass, 'success')} ${explainStep(s.step)}`);
+    if (explanations.length > 0) lines.push(`    ${explanations.join('   ')}\n`);
+  } else {
+    const failing = result.steps.find((s) => s.status === 'fail' || s.status === 'timeout');
+    const reason =
+      failing !== undefined
+        ? `${failing.step} step ${failing.status === 'timeout' ? 'timed out' : 'failed'}`
+        : (result.residualRisks[0] ?? 'verification did not confirm the fix');
+    lines.push(`    ${paint('⚠', 'warning')} Requires manual review — ${reason}\n`);
+  }
+  return lines.join('');
 }
 
 function persistRunArtifacts(reportDir: string, result: VerificationResult): void {

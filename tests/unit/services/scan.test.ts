@@ -141,4 +141,34 @@ describe('runScan', () => {
       dataErrors: 2,
     });
   });
+
+  it('reports real pipeline phases, in order, exactly once each', async () => {
+    const deps: ScanServiceDeps = {
+      parser: fakeParser({ nodes: [], lockfileVersion: 3, packageManager: 'npm', degraded: false }),
+      advisorySource: fakeAdvisorySource(ok({ advisories: [], stale: false, dataErrors: 0 })),
+    };
+    const phases: string[] = [];
+    const r = await runScan(deps, baseRequest, (phase) => phases.push(phase));
+    expect(r.ok).toBe(true);
+    expect(phases).toEqual(['lockfile', 'advisories', 'match']);
+  });
+
+  it('never calls the phase callback for a phase it did not reach', async () => {
+    const deps: ScanServiceDeps = {
+      parser: fakeParser(AppError.user('NO_MANIFEST', 'no project')),
+      advisorySource: fakeAdvisorySource(ok({ advisories: [], stale: false, dataErrors: 0 })),
+    };
+    const phases: string[] = [];
+    await runScan(deps, baseRequest, (phase) => phases.push(phase));
+    expect(phases).toEqual(['lockfile']);
+  });
+
+  it('works with no phase listener at all (optional, backward compatible)', async () => {
+    const deps: ScanServiceDeps = {
+      parser: fakeParser({ nodes: [], lockfileVersion: 3, packageManager: 'npm', degraded: false }),
+      advisorySource: fakeAdvisorySource(ok({ advisories: [], stale: false, dataErrors: 0 })),
+    };
+    const r = await runScan(deps, baseRequest);
+    expect(r.ok).toBe(true);
+  });
 });

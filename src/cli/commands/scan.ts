@@ -6,11 +6,19 @@ import { OsvClient } from '../../adapters/osv/client.js';
 import { OsvAdvisorySource } from '../../adapters/osv/index.js';
 import { BaselineSchema, type Baseline } from '../../core/models/index.js';
 import { createBaseline, diffAgainstBaseline } from '../../services/baseline.js';
-import { runScan } from '../../services/scan.js';
+import { runScan, type ScanPhase } from '../../services/scan.js';
 import { loadConfig, type Config } from '../../shared/config.js';
 import { createLogger } from '../../shared/logger.js';
 import { errorExitCode, scanExitCode } from '../exit-code.js';
+import { mergeLatestVerifications } from './shared.js';
 import { renderScan } from '../render.js';
+import { createPaint, resolveColor, resolveUiOptions, Spinner } from '../ui/index.js';
+
+const PHASE_LABEL: Record<ScanPhase, string> = {
+  lockfile: 'Reading dependency tree…',
+  advisories: 'Checking OSV.dev for known vulnerabilities…',
+  match: 'Ranking findings and resolving fixes…',
+};
 
 /**
  * Composition root for `veripatch scan` (blueprint §6). Wires concrete
@@ -34,7 +42,11 @@ const LAST_SCAN_FILE_NAME = 'last-scan.json';
 const BASELINE_FILE_NAME = 'baseline.json';
 
 export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
-  const logger = createLogger({ verbose: flags.verbose });
+  const ui = resolveUiOptions(resolveColor(flags.color));
+  const paint = createPaint(ui.color);
+  const printWarning = (text: string): void => {
+    process.stderr.write(`${paint('⚠', 'warning')} ${text}\n`);
+  };
 
   const configResult = loadConfig({
     cwd: flags.cwd,
@@ -46,25 +58,28 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
     },
   });
   if (!configResult.ok) {
-    logger.error({ code: configResult.error.code }, configResult.error.message);
+    process.stderr.write(`${paint('✗', 'danger')} ${configResult.error.message}\n`);
     return errorExitCode(configResult.error);
   }
-  const { config, warnings } = configResult.value;
-  for (const warning of warnings) logger.warn(warning);
+  const { config } = configResult.value;
+  for (const warning of configResult.value.warnings) printWarning(warning);
 
   const cacheResult = AdvisoryCache.open(DEFAULT_CACHE_DIR);
   if (!cacheResult.ok) {
-    logger.error({ code: cacheResult.error.code }, cacheResult.error.message);
+    process.stderr.write(`${paint('✗', 'danger')} ${cacheResult.error.message}\n`);
     return errorExitCode(cacheResult.error);
   }
   const cache = cacheResult.value;
 
   const detected = detectLockfile(flags.cwd);
   for (const name of detected.ignored) {
-    logger.warn(
-      `Multiple lockfiles found — scanning the ${detected.packageManager ?? 'npm'} lockfile and ignoring ${name}. Remove one to silence this warning.`,
+    printWarning(
+      `Multiple lockfiles found — scanning the ${detected.packageManager ?? 'npm'} lockfile and ignoring ${name}.`,
     );
   }
+
+  const spinner = new Spinner(ui);
+  if (!flags.json) spinner.start(PHASE_LABEL.lockfile);
 
   try {
     const scanResult = await runScan(
@@ -74,7 +89,7 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
           client: new OsvClient(),
           cache,
           cacheTtlHours: config.cacheTtlHours,
-          logger,
+          logger: createLogger({ verbose: flags.verbose }),
         }),
       },
       {
@@ -83,15 +98,21 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
         ignore: config.ignore,
         includeDevDeps: config.includeDevDeps,
       },
+      (phase) => {
+        spinner.update(PHASE_LABEL[phase]);
+      },
     );
 
     if (!scanResult.ok) {
-      logger.error({ code: scanResult.error.code }, scanResult.error.message);
+      spinner.stop();
+      process.stderr.write(`${paint('✗', 'danger')} ${scanResult.error.message}\n`);
       return errorExitCode(scanResult.error);
     }
-    const output = scanResult.value;
 
     const reportDir = path.resolve(flags.cwd, config.reportDir);
+    const output = mergeLatestVerifications(scanResult.value, reportDir);
+    spinner.stop();
+
     fs.mkdirSync(reportDir, { recursive: true });
     fs.writeFileSync(path.join(reportDir, LAST_SCAN_FILE_NAME), JSON.stringify(output, null, 2));
 
@@ -101,7 +122,7 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
         JSON.stringify(createBaseline(output.vulns), null, 2),
       );
       process.stdout.write(
-        `Wrote ${path.join(reportDir, BASELINE_FILE_NAME)} accepting ${String(output.vulns.length)} vulnerabilit${output.vulns.length === 1 ? 'y' : 'ies'} as pre-existing.\n`,
+        `${paint('✓', 'success')} Wrote ${path.join(reportDir, BASELINE_FILE_NAME)} accepting ${String(output.vulns.length)} vulnerabilit${output.vulns.length === 1 ? 'y' : 'ies'} as pre-existing.\n`,
       );
     }
 
@@ -111,7 +132,7 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
     if (flags.json) {
       process.stdout.write(`${JSON.stringify(output)}\n`);
     } else {
-      process.stdout.write(`${renderScan(output, { color: flags.color })}\n`);
+      process.stdout.write(`${renderScan(output, ui)}\n`);
     }
 
     return scanExitCode({
@@ -120,6 +141,7 @@ export async function runScanCommand(flags: ScanCommandFlags): Promise<number> {
       totalVulnCount: output.vulns.length,
     });
   } finally {
+    spinner.stop();
     cache.close();
   }
 }
