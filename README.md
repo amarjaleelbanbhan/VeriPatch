@@ -3,6 +3,8 @@
 > Verified remediation for npm vulnerabilities — don't just detect, **prove the fix is safe**.
 
 [![CI](https://github.com/amarjaleelbanbhan/VeriPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/amarjaleelbanbhan/VeriPatch/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/veripatch.svg)](https://www.npmjs.com/package/veripatch)
+[![npm downloads](https://img.shields.io/npm/dm/veripatch.svg)](https://www.npmjs.com/package/veripatch)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Detection of vulnerable npm dependencies is commoditized (`npm audit`, Dependabot, Snyk).
@@ -14,6 +16,17 @@ of breakage, and lack of evidence. VeriPatch closes the gap:
    left the resolved tree, run your build and tests to prove nothing breaks.
 3. **Report** — emit audit-grade evidence reports (Markdown + JSON) with deterministic
    confidence verdicts.
+
+|                                                     | `npm audit` | Dependabot | Snyk | VeriPatch |
+| --------------------------------------------------- | :---------: | :--------: | :--: | :-------: |
+| Detects known vulnerabilities                       |     ✅      |     ✅     |  ✅  |    ✅     |
+| Ranks by severity                                   |     ✅      |     ✅     |  ✅  |    ✅     |
+| Opens a fix PR                                      |     ❌      |     ✅     |  ✅  | ❌ (yet)  |
+| **Actually runs the fix in isolation**              |     ❌      |     ❌     |  ❌  |    ✅     |
+| **Independently re-scans to prove the CVE is gone** |     ❌      |     ❌     |  ❌  |    ✅     |
+| **Runs your real build/test before you merge**      |     ❌      |     ❌     |  ❌  |    ✅     |
+| Verdict from exit codes only, never heuristics      |     n/a     |    n/a     | n/a  |    ✅     |
+| Free, self-hosted, no account                       |     ✅      |     ✅     |  ❌  |    ✅     |
 
 ## Quickstart
 
