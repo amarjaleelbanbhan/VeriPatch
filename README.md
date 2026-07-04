@@ -7,7 +7,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/veripatch.svg)](https://www.npmjs.com/package/veripatch)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-![veripatch scan finding real axios vulnerabilities, then veripatch verify proving a fix is safe in a Docker sandbox](assets/veripatch-demo.gif)
+![veripatch scan: project summary, ranked vulnerability table, verification detail, and a final recommendation, all against a real axios vulnerability](assets/veripatch-demo.gif)
 
 Detection of vulnerable npm dependencies is commoditized (`npm audit`, Dependabot, Snyk).
 **Verified remediation is not.** Engineers don't apply fixes because of alert fatigue, fear
