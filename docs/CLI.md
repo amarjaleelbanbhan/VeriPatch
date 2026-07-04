@@ -25,6 +25,12 @@ A single mapper (`src/cli/exit-code.ts`) decides every exit code:
 Parses the lockfile, fetches advisories, ranks vulnerabilities, resolves a deterministic fix
 per vuln, and writes `.veripatch/last-scan.json`.
 
+The human-readable output is a project summary card, a ranked top-vulnerabilities table
+(package · severity · current · safe version · verification status), a verification section
+that explains each already-proven verdict in plain language, and a final recommendation. Colors
+and box-drawing auto-disable when output is piped or `NO_COLOR` is set, and degrade to ASCII
+where Unicode isn't supported. `--json` emits the stable machine schema instead ([docs/API.md](API.md)).
+
 Supported lockfiles: `package-lock.json` (v2/v3), `yarn.lock` (classic v1 and berry), and
 `pnpm-lock.yaml` (v6/v9), auto-detected. When several are present, precedence is npm → yarn →
 pnpm and a warning names each ignored file.
