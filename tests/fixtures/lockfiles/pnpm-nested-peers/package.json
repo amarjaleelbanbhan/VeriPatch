@@ -1,0 +1,8 @@
+{
+  "name": "pnpm-nested-peers",
+  "version": "1.0.0",
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "@eslint-community/eslint-utils": "^4.9.1"
+  }
+}

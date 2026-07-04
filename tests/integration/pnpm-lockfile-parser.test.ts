@@ -84,6 +84,19 @@ describe('PnpmLockfileParser on the fixture corpus', () => {
     if (!r.ok) expect(r.error.code).toBe('LOCKFILE_HOSTILE_ENTRY');
   });
 
+  it('regression: a peer whose own peer suffix contains "@" (e.g. eslint-utils depending on eslint depending on jiti) still parses — lastIndexOf("@") on the raw key would otherwise land inside the nested suffix', () => {
+    const r = parser.parse(path.join(FIXTURES, 'pnpm-nested-peers'));
+    if (!r.ok) throw r.error;
+    expect(r.value.nodes.map((n) => `${n.name}@${n.version}`)).toEqual([
+      '@eslint-community/eslint-utils@4.9.1',
+      'eslint@9.39.4',
+      'jiti@1.21.7',
+    ]);
+    const eslintUtils = r.value.nodes.find((n) => n.name === '@eslint-community/eslint-utils')!;
+    expect(eslintUtils.dev).toBe(true);
+    expect(eslintUtils.direct).toBe(true);
+  });
+
   it('no lockfile: falls back to degraded package.json parsing', () => {
     const r = parser.parse(path.join(FIXTURES, 'degraded-project'));
     if (!r.ok) throw r.error;

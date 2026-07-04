@@ -126,13 +126,34 @@ function bareVersion(ref: string): string | undefined {
   return version.length > 0 ? version : undefined;
 }
 
+/**
+ * Strips the trailing peer-suffix "(...)" group(s), respecting nesting —
+ * a peer itself can carry its own peer suffix, e.g.
+ * "eslint@9.39.4(jiti@1.21.7)". `lastIndexOf('@')` on the raw key would
+ * otherwise land on an '@' inside that nested suffix instead of the real
+ * name/version separator, so the suffix must come off first.
+ */
+function stripPeerSuffix(key: string): string {
+  let depth = 0;
+  for (let i = 0; i < key.length; i++) {
+    if (key[i] === '(') {
+      if (depth === 0) return key.slice(0, i);
+      depth++;
+    } else if (key[i] === ')') {
+      depth--;
+    }
+  }
+  return key;
+}
+
 /** "name@1.2.3(peers)" or "/name@1.2.3(peers)" → { name, version }. */
 function splitPackageKey(key: string): { name: string; version: string } | undefined {
   const trimmed = key.startsWith('/') ? key.slice(1) : key;
-  const at = trimmed.lastIndexOf('@');
+  const withoutPeers = stripPeerSuffix(trimmed);
+  const at = withoutPeers.lastIndexOf('@');
   if (at <= 0) return undefined;
-  const name = trimmed.slice(0, at);
-  const version = bareVersion(trimmed.slice(at + 1));
+  const name = withoutPeers.slice(0, at);
+  const version = bareVersion(withoutPeers.slice(at + 1));
   if (version === undefined) return undefined;
   return { name, version };
 }
