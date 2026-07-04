@@ -1,5 +1,16 @@
 # veripatch
 
+## 0.3.1
+
+### Patch Changes
+
+- [`6ef84b7`](https://github.com/amarjaleelbanbhan/VeriPatch/commit/6ef84b769099583900d130838af0b71a814946bc) Thanks [@amarjaleelbanbhan](https://github.com/amarjaleelbanbhan)! - Fix a pnpm lockfile parsing bug: a package whose peer dependency itself has a peer suffix
+  (e.g. `@eslint-community/eslint-utils@4.9.1(eslint@9.39.4(jiti@1.21.7))` — extremely common in
+  real-world ESLint 9 projects) was rejected with "invalid npm package name". The parser used
+  `lastIndexOf('@')` on the raw lockfile key to split package name from version, which broke as
+  soon as the nested peer suffix contained its own `@`. It now strips the peer suffix first
+  (respecting nesting), then splits name from version.
+
 ## 0.3.0
 
 ### Minor Changes
