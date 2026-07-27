@@ -1,110 +1,477 @@
-# VeriPatch
+# 🛡️ VeriPatch
 
-> Verified remediation for npm vulnerabilities — don't just detect, **prove the fix is safe**.
+### **Don't just detect vulnerabilities. Prove the fix is safe.**
+
+> **Verified remediation for npm vulnerabilities — from detection to evidence.**
 
 [![CI](https://github.com/amarjaleelbanbhan/VeriPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/amarjaleelbanbhan/VeriPatch/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/veripatch.svg)](https://www.npmjs.com/package/veripatch)
 [![npm downloads](https://img.shields.io/npm/dm/veripatch.svg)](https://www.npmjs.com/package/veripatch)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-![veripatch scan: project summary, ranked vulnerability table, verification detail, and a final recommendation, all against a real axios vulnerability](assets/veripatch-demo.gif)
+<br />
 
-Detection of vulnerable npm dependencies is commoditized (`npm audit`, Dependabot, Snyk).
-**Verified remediation is not.** Engineers don't apply fixes because of alert fatigue, fear
-of breakage, and lack of evidence. VeriPatch closes the gap:
+![VeriPatch Demo](assets/veripatch-demo.gif)
 
-1. **Scan** — rank vulnerabilities by severity × fix feasibility (via [OSV.dev](https://osv.dev)).
-2. **Verify** — apply the fix in a hardened Docker sandbox, re-scan to prove the vulnerability
-   left the resolved tree, run your build and tests to prove nothing breaks.
-3. **Report** — emit audit-grade evidence reports (Markdown + JSON) with deterministic
-   confidence verdicts.
+<p align="center">
+  <strong>Scan → Verify → Prove → Report</strong>
+</p>
 
-|                                                     | `npm audit` | Dependabot | Snyk | VeriPatch |
-| --------------------------------------------------- | :---------: | :--------: | :--: | :-------: |
-| Detects known vulnerabilities                       |     ✅      |     ✅     |  ✅  |    ✅     |
-| Ranks by severity                                   |     ✅      |     ✅     |  ✅  |    ✅     |
-| Opens a fix PR                                      |     ❌      |     ✅     |  ✅  | ❌ (yet)  |
-| **Actually runs the fix in isolation**              |     ❌      |     ❌     |  ❌  |    ✅     |
-| **Independently re-scans to prove the CVE is gone** |     ❌      |     ❌     |  ❌  |    ✅     |
-| **Runs your real build/test before you merge**      |     ❌      |     ❌     |  ❌  |    ✅     |
-| Verdict from exit codes only, never heuristics      |     n/a     |    n/a     | n/a  |    ✅     |
-| Free, self-hosted, no account                       |     ✅      |     ✅     |  ❌  |    ✅     |
+---
 
-## Quickstart
+## 🚨 The Problem
+
+Modern security tools are excellent at **finding vulnerabilities**.
+
+But finding a vulnerability is only the beginning.
+
+The real question is:
+
+> **"If I apply this fix, can I prove that the vulnerability is gone — and that my application still works?"**
+
+Engineers often hesitate to remediate vulnerabilities because of:
+
+* 🔔 Alert fatigue
+* 💥 Fear of breaking production
+* 🔄 Dependency conflicts
+* 🧪 Lack of verification
+* 📄 Lack of auditable evidence
+
+Tools like `npm audit`, Dependabot, and Snyk help identify problems.
+
+**VeriPatch focuses on what happens next.**
+
+---
+
+# 💡 What is VeriPatch?
+
+**VeriPatch is a verification-first vulnerability remediation tool for npm projects.**
+
+Instead of simply telling you:
+
+> ❌ "A vulnerability exists."
+
+VeriPatch aims to tell you:
+
+> ✅ "We applied the fix in isolation."
+> ✅ "We independently verified the vulnerability is no longer present."
+> ✅ "Your build and tests still pass."
+> ✅ "Here is the evidence."
+
+### The workflow
+
+```text
+┌──────────┐
+│   SCAN   │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│  RANK    │  Severity × Fix Feasibility
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│  VERIFY  │  Hardened Docker Sandbox
+└────┬─────┘
+     │
+     ├───────────────┐
+     ▼               ▼
+ Re-scan          Build + Test
+     │               │
+     └───────┬───────┘
+             ▼
+      ┌─────────────┐
+      │   REPORT    │
+      └─────────────┘
+             │
+             ▼
+      📄 Audit Evidence
+```
+
+---
+
+# ⚡ Why VeriPatch?
+
+| Capability                     | `npm audit` | Dependabot | Snyk | **VeriPatch** |
+| ------------------------------ | :---------: | :--------: | :--: | :-----------: |
+| Detect known vulnerabilities   |      ✅      |      ✅     |   ✅  |       ✅       |
+| Severity ranking               |      ✅      |      ✅     |   ✅  |       ✅       |
+| Opens a fix PR                 |      ❌      |      ✅     |   ✅  |       ❌       |
+| Runs the fix in isolation      |      ❌      |      ❌     |   ❌  |     **✅**     |
+| Re-scans after remediation     |      ❌      |      ❌     |   ❌  |     **✅**     |
+| Verifies vulnerability is gone |      ❌      |      ❌     |   ❌  |     **✅**     |
+| Runs real build & tests        |      ❌      |      ❌     |   ❌  |     **✅**     |
+| Deterministic verdicts         |      ❌      |      ❌     |   ❌  |     **✅**     |
+| Self-hosted                    |      ✅      |      ✅     |   ❌  |     **✅**     |
+| No account required            |      ✅      |      ✅     |   ❌  |     **✅**     |
+
+> **Detection tells you there is a problem.
+> Verification gives you evidence that the problem is actually solved.**
+
+---
+
+# 🔬 How VeriPatch Works
+
+### 1️⃣ Scan
+
+Parse your project's dependency lockfile and query vulnerability intelligence from [OSV.dev](https://osv.dev).
+
+VeriPatch ranks vulnerabilities based on:
+
+```text
+Severity × Fix Feasibility
+```
+
+Giving developers a prioritized remediation queue instead of an overwhelming list of alerts.
+
+---
+
+### 2️⃣ Verify
+
+VeriPatch creates an isolated copy of your project and performs the remediation inside a hardened Docker sandbox.
+
+```text
+Your Project
+     │
+     ▼
+┌─────────────────────┐
+│   Isolated Copy     │
+│                     │
+│  Apply Dependency   │
+│       Fix           │
+│         │           │
+│         ▼           │
+│   Install Safely    │
+│         │           │
+│         ▼           │
+│    Re-scan Tree     │
+│         │           │
+│         ▼           │
+│    Build + Test     │
+└─────────────────────┘
+```
+
+The original working tree remains untouched during verification.
+
+---
+
+### 3️⃣ Prove
+
+VeriPatch independently re-scans the resolved dependency tree.
+
+The goal is not to assume the fix worked.
+
+The goal is to **prove the vulnerable dependency is no longer present**.
+
+Verification decisions are based on:
+
+* Exit codes
+* Independent vulnerability re-scan
+* Build results
+* Test results
+
+**No log-text heuristics.**
+
+---
+
+### 4️⃣ Report
+
+Every verification can produce machine-readable and human-readable evidence.
+
+```text
+📄 report.md
+📦 report.json
+```
+
+Reports can capture:
+
+* Vulnerability identity
+* Original dependency state
+* Applied remediation
+* Verification results
+* Re-scan results
+* Build status
+* Test status
+* Final confidence verdict
+
+This makes remediation easier to review, automate, and audit.
+
+---
+
+# 🚀 Quickstart
+
+### Install
 
 ```bash
 npm install -g veripatch
-
-veripatch doctor              # diagnose environment (Node, Docker, lockfile, network)
-veripatch scan                # ranked vulnerability table in <15s
-veripatch verify GHSA-...     # sandboxed proof a fix is safe
-veripatch update GHSA-...     # apply a verified fix to your working tree
-veripatch report GHSA-...     # re-render evidence without re-running anything
 ```
 
-`scan` and `report` work everywhere; `verify` requires a reachable Docker daemon.
+### Diagnose your environment
 
-`scan` understands `package-lock.json` (v2/v3), `yarn.lock` (classic and berry), and
-`pnpm-lock.yaml` (v6/v9), auto-detected. `verify`/`update` currently replay fixes with npm, so
-they refuse yarn/pnpm projects explicitly rather than corrupting them.
+```bash
+veripatch doctor
+```
 
-### As a GitHub Action
+Checks:
+
+* Node.js
+* Docker
+* Lockfile
+* Network connectivity
+* Environment readiness
+
+### Scan your project
+
+```bash
+veripatch scan
+```
+
+Get a ranked vulnerability report in seconds.
+
+### Verify a vulnerability fix
+
+```bash
+veripatch verify GHSA-...
+```
+
+Test the remediation inside an isolated sandbox.
+
+### Apply a verified fix
+
+```bash
+veripatch update GHSA-...
+```
+
+Apply the remediation to your working tree.
+
+### Re-render evidence
+
+```bash
+veripatch report GHSA-...
+```
+
+Generate the report again without repeating the verification process.
+
+---
+
+# 🤖 GitHub Actions
+
+Bring verified remediation directly into your CI pipeline.
 
 ```yaml
 - uses: actions/checkout@v4
+
 - uses: amarjaleelbanbhan/VeriPatch@v0.1.0
   with:
     severity-threshold: high
     fail-on: new
 ```
 
-See [examples/workflow.yml](examples/workflow.yml) for the full example (triggers, permissions,
-baseline mode) and [action.yml](action.yml) for every input.
+Full workflow example:
 
-## How it works
+👉 [examples/workflow.yml](examples/workflow.yml)
 
+All available Action inputs:
+
+👉 [action.yml](action.yml)
+
+---
+
+# 📦 Supported Lockfiles
+
+VeriPatch automatically detects:
+
+| Package Manager              | Scan | Verify / Update |
+| ---------------------------- | :--: | :-------------: |
+| npm / `package-lock.json` v2 |   ✅  |        ✅        |
+| npm / `package-lock.json` v3 |   ✅  |        ✅        |
+| Yarn Classic                 |   ✅  |        🚧       |
+| Yarn Berry                   |   ✅  |        🚧       |
+| pnpm v6                      |   ✅  |        🚧       |
+| pnpm v9                      |   ✅  |        🚧       |
+
+> `verify` and `update` currently replay fixes with npm. Yarn and pnpm projects are explicitly refused rather than risking lockfile corruption.
+
+---
+
+# 🏗️ Architecture
+
+```text
+                         ┌──────────────────┐
+                         │     Developer    │
+                         └────────┬─────────┘
+                                  │
+                                  ▼
+                         ┌──────────────────┐
+                         │  VeriPatch CLI   │
+                         └────────┬─────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+                    ▼                           ▼
+             ┌─────────────┐             ┌─────────────┐
+             │    SCAN     │             │   VERIFY    │
+             └──────┬──────┘             └──────┬──────┘
+                    │                           │
+                    ▼                           ▼
+             ┌─────────────┐             ┌─────────────┐
+             │ Lockfile    │             │ Docker      │
+             │ Parser      │             │ Sandbox     │
+             └──────┬──────┘             └──────┬──────┘
+                    │                           │
+                    ▼                           ▼
+             ┌─────────────┐             ┌─────────────┐
+             │   OSV.dev   │             │ Apply Fix   │
+             └──────┬──────┘             └──────┬──────┘
+                    │                           │
+                    ▼                           ▼
+             ┌─────────────┐             ┌─────────────┐
+             │ Rule Engine │             │ Re-scan     │
+             └──────┬──────┘             └──────┬──────┘
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  │
+                                  ▼
+                         ┌──────────────────┐
+                         │ Evidence Report  │
+                         │   MD + JSON      │
+                         └──────────────────┘
 ```
-scan  → parse lockfile → OSV advisories → rule engine → ranked, fix-resolved report
-verify → stage a copy → apply the bump → install (sandboxed, scripts off)
-       → re-scan the copy to prove the vuln is gone → build/test (network off)
-       → deterministic verdict from exit codes + the re-scan alone
-```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full data flow and layering.
+See the full architecture:
 
-## Design principles
+👉 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-- **Verification-first** — confidence verdicts derive only from exit codes and VeriPatch's own
-  re-scan, never from log-text heuristics (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
-- **Security-first** — untrusted project code only ever executes inside a hardened,
-  network-restricted container. Zero telemetry. No secrets required. See
-  [docs/SECURITY.md](docs/SECURITY.md).
-- **CI-native** — machine-readable `report.json` ([docs/API.md](docs/API.md)), deterministic
-  exit codes, baseline mode so pre-existing debt doesn't fail builds.
+---
 
-## Documentation
+# 🛡️ Design Principles
 
-|                                                |                                                                      |
-| ---------------------------------------------- | -------------------------------------------------------------------- |
-| [docs/CLI.md](docs/CLI.md)                     | Full command reference, flags, exit codes                            |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | `.veripatchrc` reference and precedence                              |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)   | Layering, data flow, confidence rules                                |
-| [docs/API.md](docs/API.md)                     | `report.json` schema, ports, OSV usage                               |
-| [docs/SECURITY.md](docs/SECURITY.md)           | Threat model, sandbox guarantees, disclosure policy                  |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)   | Setup, layering rules, fixture-adding guide                          |
-| [docs/ROADMAP.md](docs/ROADMAP.md)             | What's shipped, what's next                                          |
-| [docs/adr/](docs/adr/)                         | Why OSV over NVD, SQLite over Postgres, Docker over subprocess, etc. |
+### 🔬 Verification First
 
-## Status
+Confidence verdicts are derived from:
 
-All MVP milestones (scan, verify, report/update/doctor/cache, GitHub Action) are implemented
-and tested. Pre-1.0: the CLI contract and `report.json` schema are considered stable but not
-yet field-proven — see [docs/ROADMAP.md](docs/ROADMAP.md) for what's tracked toward v1.0.
+* Process exit codes
+* Independent vulnerability re-scans
 
-## Contributing
+Never from fragile log-text heuristics.
 
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md). Issues and discussion are welcome.
+👉 [Read the verification architecture](docs/ARCHITECTURE.md)
 
-## License
+---
 
-[Apache-2.0](LICENSE)
+### 🔒 Security First
+
+Untrusted project code is executed only inside a hardened, network-restricted container.
+
+**VeriPatch provides:**
+
+* Isolated execution
+* Restricted network access
+* No telemetry
+* No required secrets
+
+👉 [Read the security model](docs/SECURITY.md)
+
+---
+
+### ⚙️ CI Native
+
+Built for automated workflows with:
+
+* Machine-readable `report.json`
+* Deterministic exit codes
+* Baseline mode
+* CI-friendly failure policies
+
+👉 [Read the API documentation](docs/API.md)
+
+---
+
+# 📚 Documentation
+
+| Documentation                          | Description                                            |
+| -------------------------------------- | ------------------------------------------------------ |
+| [CLI Reference](docs/CLI.md)           | Commands, flags, and exit codes                        |
+| [Configuration](docs/CONFIGURATION.md) | `.veripatchrc` configuration and precedence            |
+| [Architecture](docs/ARCHITECTURE.md)   | System architecture, data flow, and verification rules |
+| [API](docs/API.md)                     | `report.json`, ports, and OSV integration              |
+| [Security](docs/SECURITY.md)           | Threat model and sandbox guarantees                    |
+| [Contributing](docs/CONTRIBUTING.md)   | Development setup and contribution guide               |
+| [Roadmap](docs/ROADMAP.md)             | Shipped features and what's next                       |
+| [ADRs](docs/adr/)                      | Architecture decisions and technical rationale         |
+
+---
+
+# 📊 Project Status
+
+### Current Status: **Pre-1.0 🚧**
+
+The current MVP includes:
+
+* ✅ Vulnerability scanning
+* ✅ Severity and fix-feasibility ranking
+* ✅ Verification workflow
+* ✅ Docker sandboxing
+* ✅ Vulnerability re-scanning
+* ✅ Build and test verification
+* ✅ Evidence reports
+* ✅ Markdown + JSON output
+* ✅ `update` workflow
+* ✅ Environment diagnostics
+* ✅ Caching
+* ✅ GitHub Action
+
+The CLI contract and `report.json` schema are considered **stable**, but the project is still pre-1.0.
+
+See the roadmap for upcoming work:
+
+👉 [docs/ROADMAP.md](docs/ROADMAP.md)
+
+---
+
+# 🤝 Contributing
+
+VeriPatch is open source and contributions are welcome.
+
+Whether you want to:
+
+* 🐛 Report a bug
+* 💡 Propose an idea
+* 🔧 Improve the CLI
+* 🧪 Add test fixtures
+* 📚 Improve documentation
+* 🚀 Build new integrations
+
+Start here:
+
+👉 [CONTRIBUTING.md](docs/CONTRIBUTING.md)
+
+---
+
+# ⭐ Support the Project
+
+If VeriPatch is useful to you:
+
+⭐ **Star the repository**
+
+🐛 **Report bugs**
+
+💡 **Open feature requests**
+
+🤝 **Contribute**
+
+Every contribution helps make vulnerability remediation more trustworthy.
+
+---
+
+# 📜 License
+
+Licensed under the [Apache-2.0 License](LICENSE).
+
+---
+
+<p align="center">
+  <strong>VeriPatch</strong><br />
+  <em>Don't just detect vulnerabilities. Prove the fix is safe.</em>
+</p>
