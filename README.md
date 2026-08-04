@@ -192,7 +192,7 @@ Reports can capture:
 * Verification results
 * Re-scan results
 * Build status
-* Test status
+* Test status 001
 * Final confidence verdict
 
 This makes remediation easier to review, automate, and audit.
