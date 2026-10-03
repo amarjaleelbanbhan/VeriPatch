@@ -94,7 +94,7 @@ jobs:
           echo "=== DATA MAP ==="
           /tmp/xerj autoindex map --url http://127.0.0.1:9200 --disable-feedback
 
-      - name: Compare XERJ retrieval with plain ripgrep
+      - name: Compare XERJ retrieval with plain grep
         shell: bash
         run: |
           set -euo pipefail
@@ -138,21 +138,21 @@ jobs:
               ((._source.symbols // []) | map(.name) | join(","))
             ] | @tsv' <<<"${response}"
 
-            echo "--- RIPGREP BASELINE ---"
+            echo "--- GREP BASELINE ---"
             pattern=$(sed 's/ /|/g' <<<"${q}")
             start_ns=$(date +%s%N)
             set +e
-            rg_out=$(rg -l -i "${pattern}" src tests docs README.md VeriPatch_BLUEPRINT.md 2>/dev/null)
-            rg_code=$?
+            grep_out=$(grep -RIlE -i "${pattern}" src tests docs README.md VeriPatch_BLUEPRINT.md 2>/dev/null)
+            grep_code=$?
             set -e
             end_ns=$(date +%s%N)
 
-            if [[ "${rg_code}" != "0" && "${rg_code}" != "1" ]]; then
-              exit "${rg_code}"
+            if [[ "${grep_code}" != "0" && "${grep_code}" != "1" ]]; then
+              exit "${grep_code}"
             fi
 
             rg_count=$(printf '%s\n' "${rg_out}" | sed '/^$/d' | wc -l | tr -d ' ')
-            echo "wall_ms=$(( (end_ns - start_ns) / 1000000 )) matching_files=${rg_count}"
+            echo "wall_ms=$(( (end_ns - start_ns) / 1000000 )) matching_files=${grep_count}"
             printf '%s\n' "${rg_out}" | sed '/^$/d' | head -n 20
           done
 
