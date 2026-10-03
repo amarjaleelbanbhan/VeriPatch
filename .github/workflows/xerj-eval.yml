@@ -150,10 +150,9 @@ jobs:
             if [[ "${grep_code}" != "0" && "${grep_code}" != "1" ]]; then
               exit "${grep_code}"
             fi
-
-            rg_count=$(printf '%s\n' "${rg_out}" | sed '/^$/d' | wc -l | tr -d ' ')
+            grep_count=$(printf '%s\\n' "${grep_out}" | sed '/^$/d' | wc -l | tr -d ' ')
             echo "wall_ms=$(( (end_ns - start_ns) / 1000000 )) matching_files=${grep_count}"
-            printf '%s\n' "${rg_out}" | sed '/^$/d' | head -n 20
+            printf '%s\\n' "${grep_out}" | sed '/^$/d' | head -n 20
           done
 
       - name: Symbol-definition retrieval check
